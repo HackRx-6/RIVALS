@@ -53,7 +53,7 @@ python
 
         # --- Call the OpenAI API ---
         response = client.chat.completions.create(
-            model="gpt-4-turbo", # Or another capable model
+            model="gpt-4.", # Or another capable model
             messages=[
                 {"role": "system", "content": "You are an expert programmer assistant."},
                 {"role": "user", "content": prompt}
