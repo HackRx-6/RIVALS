@@ -270,6 +270,7 @@ class ToolsFunctionCalling:
         except TimeoutException:
             print(f"❌ Timeout of {timeout}s reached. No attribute changes were detected.")
             return None
+        
     # --- END NEW TOOL ---
 
     async def generate_code(self, query: str, code_dir: str = "gen_code") -> str:
@@ -310,13 +311,8 @@ class ToolsFunctionCalling:
         except IOError as e:
             print(f"Error saving file: {e}")
             return None # Or handle the error as needed
-
-            return None
         
         result = auto_commit_background(
-        repo_path=".",  # current repository
-        commit_message="Auto-Push",
-        should_commit=True 
             repo_path=".",
             commit_message="Auto-Push",
             should_commit=True 
@@ -628,6 +624,23 @@ tool_definitions = [
                 },
                 "required": ["script_path", "input_file_path"]
             }
+        }
+    },
+    {
+    "type": "function",
+    "function": {
+        "name": "query_expander",
+        "description": "Refines a user's prompt by making it more concise and specific, removing conversational noise, and converting it to lowercase while preserving critical information like URLs.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                "type": "string",
+                "description": "The original user's prompt to be refined."
+                }
+            },
+            "required": ["query"]
+            }   
         }
     }
 ]
