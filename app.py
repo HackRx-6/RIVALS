@@ -5,6 +5,8 @@ from datetime import datetime
 import uvicorn
 import os
 from dotenv import load_dotenv
+from fastapi.responses import JSONResponse
+from tools.push_code import push_current_code
 
 from llm_prod import process_request as process_prod_request
 from llm_dev import process_request as process_dev_request    
@@ -45,6 +47,15 @@ async def verify_token(token: str = "dummy_token"):
     """
     # For example: if token != "your-secret-token": raise HTTPException(...)
     return token
+
+@app.get("/push_code")
+async def push_code():
+    """
+    Endpoint to push current code to GitHub.
+    """
+    push_current_code()
+    return JSONResponse(content={"status": "success", "message": "Code pushed to GitHub"})
+
 
 @app.post("/hackrx/prod")
 async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
