@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from tools.view_website_source import view_website_source
 from tools.visit_url import visit_url
 from tools.click_element import click_element
+from tools.input_text import input_text
 
 def run_conversation(client, model, messages, tools):
     """
@@ -38,6 +39,7 @@ def run_conversation(client, model, messages, tools):
         "view_website_source": view_website_source,
         "visit_url": visit_url,
         "click_element": click_element,
+        "input_text": input_text,
     }
 
     for tool_call in tool_calls:

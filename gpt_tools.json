@@ -61,5 +61,44 @@
         "required": ["url", "tag_name", "class_names", "text_content"]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "input_text",
+      "description": "Finds an input field on a webpage and types text into it. The field is located using its HTML tag, CSS classes, and placeholder text.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "The URL of the page where the input field exists."
+          },
+          "tag_name": {
+            "type": "string",
+            "description": "The HTML tag of the element (e.g., 'input', 'textarea')."
+          },
+          "class_names": {
+            "type": "string",
+            "description": "A space-separated string of the CSS classes on the element."
+          },
+          "placeholder_text": {
+            "type": "string",
+            "description": "The placeholder text of the input field."
+          },
+          "text_to_input": {
+            "type": "string",
+            "description": "The text that will be typed into the field."
+          }
+        },
+        "required": [
+          "url",
+          "tag_name",
+          "class_names",
+          "placeholder_text",
+          "text_to_input"
+        ]
+      }
+    }
   }
 ]
