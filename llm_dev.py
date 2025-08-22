@@ -28,6 +28,7 @@ async def run_single_conversation_async(client, model, messages, tools):
         "generate_code": browser.generate_code,
         "generate_code_input_from_file": browser.generate_code_input_from_file,
         "run_python_with_input": browser.run_python_with_input,
+        "observe_attribute_change": browser.observe_attribute_change,
     }
 
     try:
@@ -84,12 +85,7 @@ async def process_request(user_request: dict) -> dict:
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
-    client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+    client = AsyncOpenAI()
     model = "gpt-4.1"
     
     context_data = {k: v for k, v in user_request.items() if k !='questions'}

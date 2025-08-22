@@ -1,10 +1,12 @@
-# tools.py
 import asyncio
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
+from typing import List, Optional
 # ToolsFunctionCalling
 from openai import AsyncOpenAI
 import time
@@ -12,18 +14,18 @@ import time
 import subprocess
 import sys
 from pathlib import Path
-  
+ 
 import re
 import os
 import uuid
 import re
-# client = AsyncOpenAI()
-client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+client = AsyncOpenAI()
+# client = AsyncOpenAI(
+#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+#         default_headers={
+#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+#     })
 
 
 
@@ -116,6 +118,32 @@ def auto_commit_background(repo_path=".", commit_message="Auto-commit", should_c
 
     future.add_done_callback(log_result)
 
+# -----------------------------------------------------------------------------
+# Custom Expected Condition for Selenium (Helper for the new tool)
+# -----------------------------------------------------------------------------
+class attribute_changed_for_any_element:
+    """
+    An expectation for checking if a specified attribute has changed for any
+    of the elements identified by a list of CSS selectors.
+    """
+    def __init__(self, selectors: List[str], attribute: str, initial_states: dict):
+        self.selectors = selectors
+        self.attribute = attribute
+        self.initial_states = initial_states
+
+    def __call__(self, driver) -> Optional[str]:
+        for selector in self.selectors:
+            try:
+                element = driver.find_element(By.CSS_SELECTOR, selector)
+                current_value = element.get_attribute(self.attribute)
+                initial_value = self.initial_states.get(selector)
+                if current_value != initial_value:
+                    return selector
+            except NoSuchElementException:
+                print(f"Warning: Element with selector '{selector}' not found.")
+                continue
+        return False
+
 class ToolsFunctionCalling:
     """
     Manages a single, persistent Selenium WebDriver session.
@@ -151,7 +179,7 @@ class ToolsFunctionCalling:
             print("Browser not started. Initializing now...")
             await self.start_browser()
             if not self.driver:
-                 raise RuntimeError("Failed to start the browser session.")
+                raise RuntimeError("Failed to start the browser session.")
 
 
     async def navigate(self, url: str) -> str:
@@ -201,6 +229,49 @@ class ToolsFunctionCalling:
             return await asyncio.to_thread(_input)
         except Exception as e:
             return f"Error inputting text: {e}"
+
+    # --- NEW TOOL ---
+    async def observe_attribute_change(self, selectors: List[str], attribute: str, timeout: int) -> Optional[str]:
+        """
+        Asynchronously monitors elements for an attribute change.
+        """
+        await self._ensure_browser_started()
+        return await asyncio.to_thread(
+            self._observe_attribute_change_sync,
+            selectors,
+            attribute,
+            timeout
+        )
+
+    def _observe_attribute_change_sync(self, selectors: List[str], attribute: str, timeout: int) -> Optional[str]:
+        """
+        The synchronous core logic for observing attribute changes.
+        """
+        print(f"--- Observing {len(selectors)} elements for changes to '{attribute}' attribute (timeout: {timeout}s) ---")
+        
+        initial_states = {}
+        for selector in selectors:
+            try:
+                element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                initial_states[selector] = element.get_attribute(attribute)
+            except NoSuchElementException:
+                print(f"Error: Could not find element with selector '{selector}' during initial state capture.")
+                initial_states[selector] = None
+
+        print("Initial states captured:", initial_states)
+
+        try:
+            wait = WebDriverWait(self.driver, timeout)
+            changed_element_selector = wait.until(
+                attribute_changed_for_any_element(selectors, attribute, initial_states)
+            )
+            print(f"✅ Change detected! Element '{changed_element_selector}' changed its '{attribute}' attribute.")
+            return changed_element_selector
+        except TimeoutException:
+            print(f"❌ Timeout of {timeout}s reached. No attribute changes were detected.")
+            return None
+    # --- END NEW TOOL ---
+
     async def generate_code(self, query: str, code_dir: str = "gen_code") -> str:
         """
         Generates executable code, saves it to a .py file, 
@@ -208,7 +279,6 @@ class ToolsFunctionCalling:
         """
         print(f"Generating code for query: {query}")
         
-        # Define and ensure the output directory exists
         output_dir = code_dir
         os.makedirs(output_dir, exist_ok=True)
 
@@ -224,152 +294,95 @@ class ToolsFunctionCalling:
         raw_response = response.choices[0].message.content.strip()
         clean_code = ""
 
-        # Use regex to find code inside python markdown blocks
         code_match = re.search(r"```(?:python)?\n(.*)\n```", raw_response, re.DOTALL)
         
         if code_match:
-            # If a markdown block is found, extract the code from it
             clean_code = code_match.group(1).strip()
         else:
-            # Otherwise, assume the whole response is the code
             clean_code = raw_response
 
-        # Generate a unique filename and path
         filename = f"code_{uuid.uuid4().hex}.py"
         file_path = os.path.join(output_dir, filename)
 
-        # Save the clean code to the file
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(clean_code)
             print(f"Code successfully saved to: {file_path}")
         except IOError as e:
             print(f"Error saving file: {e}")
-            return None # Or handle the error as needed
+            return None
         
-
         result = auto_commit_background(
-
-
-        repo_path=".",  # current repository
-
-
-        commit_message="Auto-Push",
-
-
-        should_commit=True 
-
-
+            repo_path=".",
+            commit_message="Auto-Push",
+            should_commit=True 
         )
-        
-
         
         return file_path
     
-
     async def run_python_with_input(self, script_path: str, input_file_path: str) -> str:
         """
         Runs a Python script with a given input file and returns its output.
-        
-        Args:
-            script_path (str): Path to the .py file to run.
-            input_file_path (str): Path to the input.txt file.
-            
-        Returns:
-            str: The stdout of the script execution or the error if it fails.
         """
-
         print(f" 📍📍📍📍📍Running script: {script_path} with input file: {input_file_path}")
-
 
         script_path = Path(script_path)
         input_file_path = Path(input_file_path)
 
         if not script_path.is_file():
-            print(f"Error: Script file {script_path} does not exist.")
             return f"Error: Script file {script_path} does not exist."
         if not input_file_path.is_file():
-            print(f"Error: Input file {input_file_path} does not exist.")
             return f"Error: Input file {input_file_path} does not exist."
 
         try:
-            # Open the input file in read mode and pass it to the script's stdin
             with input_file_path.open("r", encoding="utf-8") as f:
-                # subprocess.run works on both Linux and Windows
                 result = subprocess.run(
-                    [sys.executable, str(script_path)],  # Use the same Python interpreter
+                    [sys.executable, str(script_path)],
                     stdin=f,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,  # Return output as string instead of bytes
-                    check=False  # Don't raise exception on non-zero exit
+                    text=True,
+                    check=False
                 )
             
             if result.returncode != 0:
-                print(f"Error running script:\n{result.stderr}")
                 return f"Error running script:\n{result.stderr}"
             
             return result.stdout
 
         except Exception as e:
-            print(f"Exception occurred: {e}")
             return f"Exception occurred: {e}"
-
-
 
     async def generate_code_input_from_file(self, question: str, code_file_path: str) -> str:
         """
         Generates a standard input string and saves it to a file in the 'inputs' directory.
-
-        This tool reads a Python script, analyzes a question for input values, uses an LLM 
-        to construct the standard input string, and saves it to a file named after the 
-        UUID of the source code file (e.g., 'inputs/input_<uuid>.txt').
-
-        Args:
-            question: The natural language question containing the input values.
-            code_file_path: The local file path to the Python code snippet, which must
-                            contain a UUID in its name (e.g., 'code_<uuid>.py').
-
-        Returns:
-            The full file path of the generated input file, or an error message if any step fails.
         """
-
         print(f"Generating code input for question: {question} and code file: {code_file_path}")
         try:
-            # --- Read the code from the specified file path ---
             with open(code_file_path, 'r') as f:
                 code = f.read()
-
         except FileNotFoundError:
             return f"Error: The code file was not found at the specified path: {code_file_path}"
         except Exception as e:
             return f"Error: An unexpected error occurred while reading the code file: {e}"
 
         try:
-            # --- Construct the Prompt for the LLM ---
             prompt = f"""
-    You are an expert programmer and your task is to generate the precise standard input string for a given Python script based on a natural language question.
-
-    Analyze the provided question to extract all necessary input values.
-    Then, analyze the provided Python code to understand how it reads from standard input (e.g., input(), input().split(), loops, etc.).
-
-    Your final output must be a single string that can be directly piped into the script to run it successfully. Do not include any explanation, code, or markdown formatting. Only provide the raw input string.
-
-    ---
-    *Question:*
-    {question}
-
-    ---
-    *Code:*
-    ```python
-    {code}
-    ```
-
-    ---
-    *Formatted Input String:*
-    """
-
-            # --- Call the OpenAI API ---
+You are an expert programmer and your task is to generate the precise standard input string for a given Python script based on a natural language question.
+Analyze the provided question to extract all necessary input values.
+Then, analyze the provided Python code to understand how it reads from standard input (e.g., input(), input().split(), loops, etc.).
+Your final output must be a single string that can be directly piped into the script to run it successfully. Do not include any explanation, code, or markdown formatting. Only provide the raw input string.
+---
+*Question:*
+{question}
+---
+*Code:*
+```python
+{code}
+```
+---
+*Formatted Input String:*
+"""
             response = await client.chat.completions.create(
                 model="gpt-4.1",
                 messages=[
@@ -378,30 +391,22 @@ class ToolsFunctionCalling:
                 ],
                 temperature=0.0,
             )
-
-            # --- Extract the formatted string ---
             formatted_input = response.choices[0].message.content.strip()
 
-            # --- Extract UUID from the input code file path ---
             try:
                 base_name = os.path.basename(code_file_path)
                 name_without_ext = os.path.splitext(base_name)[0]
-                # Assumes filename format like 'someprefix_uuid'
                 code_uuid = name_without_ext.split('_')[-1]
                 print(f"Extracted UUID: {code_uuid}")
             except IndexError:
                 return f"Error: Could not extract UUID from filename: {code_file_path}. Expected format like 'prefix_uuid.py'."
 
-            # --- Define the output directory and create it if it doesn't exist ---
             output_dir = "inputs"
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir, exist_ok=True)
+            os.makedirs(output_dir, exist_ok=True)
 
-            # --- Generate the unique filename and the full file path ---
             filename = f"input_{code_uuid}.txt"
             file_path = os.path.join(output_dir, filename)
 
-            # --- Save the clean input to the file ---
             try:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(formatted_input)
@@ -409,16 +414,11 @@ class ToolsFunctionCalling:
             except IOError as e:
                 return f"Error saving input file: {e}"
 
-            # --- Return the path to the newly created file ---
-
             print(f"Generated input file path: {file_path}")
             return file_path
-
         except Exception as e:
             print(e)
             return f"Error: An unexpected error occurred while generating or saving the input string: {e}"
-
-    
 
     async def close(self):
         """Asynchronously closes the browser session."""
@@ -427,6 +427,7 @@ class ToolsFunctionCalling:
             await asyncio.to_thread(self.driver.quit)
         except Exception as e:
             print(f"Error closing driver: {e}")
+
 # ==============================================================================
 #  JSON Schemas for the Tools
 # ==============================================================================
@@ -483,76 +484,98 @@ tool_definitions = [
             },
         }
     },
- {
-  "type": "function",
-  "function": {
-    "name": "generate_code",
-    "description": "Generates executable Python code based on a user's query, saves it to a .py file, and returns the absolute file path.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "type": "string",
-          "description": "The user's natural language request describing the code to be generated. For example, 'create a python script that calculates the factorial of a number'."
-        },
-        "code_dir": {
-          "type": "string",
-          "description": "The optional directory name where the generated Python file should be saved. If not provided, it defaults to 'gen_code'."
+    # --- NEW TOOL DEFINITION ---
+    {
+        "type": "function",
+        "function": {
+            "name": "observe_attribute_change",
+            "description": "Monitors a list of elements for a change in a specified attribute (e.g., 'class'). Waits for a maximum of 'timeout' seconds. Returns the CSS selector of the first element that changes, or null if no change is detected.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selectors": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "An array of CSS selectors for the elements to observe (e.g., ['#box-1', '#box-2'])."
+                    },
+                    "attribute": {
+                        "type": "string",
+                        "description": "The name of the HTML attribute to monitor for changes (e.g., 'class')."
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "The maximum number of seconds to wait for a change."
+                    }
+                },
+                "required": ["selectors", "attribute", "timeout"]
+            }
         }
-      },
-      "required": ["query"]
-    }
-  }
-},
-
-{
-  "type": "function",
-  "function": {
-    "name": "generate_code_input_from_file",
-    "description": "Generates a standard input string based on a question and a code file, saves the input string to a new file, and returns the path to that new file. Use this when ever you need to create an input file for a script.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "question": {
-          "type": "string",
-          "description": "The natural language question that contains the input values for the code. For example, 'Given the numbers 5 and 10, calculate their sum.'"
-        },
-        "code_file_path": {
-          "type": "string",
-          "description": "The local file path to the Python code snippet that will consume the standard input. For example, './calculate_sum.py'."
+    },
+    # --- END NEW TOOL DEFINITION ---
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_code",
+            "description": "Generates executable Python code based on a user's query, saves it to a .py file, and returns the absolute file path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The user's natural language request describing the code to be generated. For example, 'create a python script that calculates the factorial of a number'."
+                    },
+                    "code_dir": {
+                        "type": "string",
+                        "description": "The optional directory name where the generated Python file should be saved. If not provided, it defaults to 'gen_code'."
+                    }
+                },
+                "required": ["query"]
+            }
         }
-      },
-      "required": [
-        "question",
-        "code_file_path"
-      ]
-    }
-  }
-}
-,
-
-{
-  "type": "function",
-  "function": {
-    "name": "run_python_with_input",
-    "description": "Runs a Python script with a given input file and returns its output.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "script_path": {
-          "type": "string",
-          "description": "Path to the .py file to run."
-        },
-        "input_file_path": {
-          "type": "string",
-          "description": "Path to the input.txt file."
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_code_input_from_file",
+            "description": "Generates a standard input string based on a question and a code file, saves the input string to a new file, and returns the path to that new file. Use this when ever you need to create an input file for a script.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The natural language question that contains the input values for the code. For example, 'Given the numbers 5 and 10, calculate their sum.'"
+                    },
+                    "code_file_path": {
+                        "type": "string",
+                        "description": "The local file path to the Python code snippet that will consume the standard input. For example, './calculate_sum.py'."
+                    }
+                },
+                "required": [
+                    "question",
+                    "code_file_path"
+                ]
+            }
         }
-      },
-      "required": ["script_path", "input_file_path"]
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_python_with_input",
+            "description": "Runs a Python script with a given input file and returns its output.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "script_path": {
+                        "type": "string",
+                        "description": "Path to the .py file to run."
+                    },
+                    "input_file_path": {
+                        "type": "string",
+                        "description": "Path to the input.txt file."
+                    }
+                },
+                "required": ["script_path", "input_file_path"]
+            }
+        }
     }
-  }
-}
-
-
-
 ]
