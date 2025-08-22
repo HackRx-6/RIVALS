@@ -7,6 +7,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 # ToolsFunctionCalling
 from openai import AsyncOpenAI
+
+import subprocess
+import sys
+from pathlib import Path
   
 import re
 import os
@@ -140,6 +144,52 @@ class ToolsFunctionCalling:
 
         # Return the path to the newly created file
         return file_path
+    
+
+    async def run_python_with_input(self, script_path: str, input_file_path: str) -> str:
+        """
+        Runs a Python script with a given input file and returns its output.
+        
+        Args:
+            script_path (str): Path to the .py file to run.
+            input_file_path (str): Path to the input.txt file.
+            
+        Returns:
+            str: The stdout of the script execution or the error if it fails.
+        """
+        script_path = Path(script_path)
+        input_file_path = Path(input_file_path)
+
+        if not script_path.is_file():
+            print(f"Error: Script file {script_path} does not exist.")
+            return f"Error: Script file {script_path} does not exist."
+        if not input_file_path.is_file():
+            print(f"Error: Input file {input_file_path} does not exist.")
+            return f"Error: Input file {input_file_path} does not exist."
+
+        try:
+            # Open the input file in read mode and pass it to the script's stdin
+            with input_file_path.open("r", encoding="utf-8") as f:
+                # subprocess.run works on both Linux and Windows
+                result = subprocess.run(
+                    [sys.executable, str(script_path)],  # Use the same Python interpreter
+                    stdin=f,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,  # Return output as string instead of bytes
+                    check=False  # Don't raise exception on non-zero exit
+                )
+            
+            if result.returncode != 0:
+                print(f"Error running script:\n{result.stderr}")
+                return f"Error running script:\n{result.stderr}"
+            
+            return result.stdout
+
+        except Exception as e:
+            print(f"Exception occurred: {e}")
+            return f"Exception occurred: {e}"
+
 
 
     async def generate_code_input_from_file(self, question: str, code_file_path: str) -> str:
@@ -349,6 +399,28 @@ tool_definitions = [
     }
   }
 }
+,
 
+{
+  "type": "function",
+  "function": {
+    "name": "run_python_with_input",
+    "description": "Runs a Python script with a given input file and returns its output.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "script_path": {
+          "type": "string",
+          "description": "Path to the.py file to run."
+        },
+        "input_file_path": {
+          "type": "string",
+          "description": "Path to the input.txt file."
+        }
+      },
+      "required": ["script_path", "input_file_path"]
+    }
+  }
+}
 
 ]

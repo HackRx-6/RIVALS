@@ -1,71 +1,43 @@
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
+import subprocess
+import sys
+from pathlib import Path
 
-async def generate_code_input_from_file(question: str, code_file_path: str) -> str:
+def run_python_with_input(script_path: str, input_file_path: str) -> str:
     """
-    Generates a precise standard input string for a given code file based on a natural language question.
-
-    This tool reads a Python script from a file, analyzes a question for input values,
-    and then uses an LLM to construct the exact string that can be piped as standard
-    input to the code.
-
+    Runs a Python script with a given input file and returns its output.
+    
     Args:
-        question: The natural language question containing the input values.
-        code_file_path: The local file path to the Python code snippet.
-
+        script_path (str): Path to the .py file to run.
+        input_file_path (str): Path to the input.txt file.
+        
     Returns:
-        A formatted string ready to be used as standard input for the code,
-        or an error message if the file is not found or generation fails.
+        str: The stdout of the script execution or the error if it fails.
     """
-    try:
-        # --- Read the code from the specified file path ---
-        with open(code_file_path, 'r') as f:
-            code = f.read()
+    script_path = Path(script_path)
+    input_file_path = Path(input_file_path)
 
-    except FileNotFoundError:
-        return f"Error: The code file was not found at the specified path: {code_file_path}"
-    except Exception as e:
-        return f"Error: An unexpected error occurred while reading the code file: {e}"
+    if not script_path.is_file():
+        return f"Error: Script file {script_path} does not exist."
+    if not input_file_path.is_file():
+        return f"Error: Input file {input_file_path} does not exist."
 
     try:
-       
-
-        # --- Construct the Prompt for the LLM ---
-        prompt = f"""
-You are an expert programmer and your task is to generate the precise standard input string for a given Python script based on a natural language question.
-
-Analyze the provided question to extract all necessary input values.
-Then, analyze the provided Python code to understand how it reads from standard input (e.g., input(), input().split(), loops, etc.).
-
-Your final output must be a single string that can be directly piped into the script to run it successfully. Do not include any explanation, code, or markdown formatting. Only provide the raw input string.
-
----
-*Question:*
-{question}
-
----
-*Code:*
-python
-{code}
-
----
-*Formatted Input String:*
-"""
-
-        # --- Call the OpenAI API ---
-        response = await client.chat.completions.create(
-            model="gpt-4.1",
-            messages=[
-                {"role": "system", "content": "You are an expert programmer assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.0,
-        )
-
-        # --- Extract and return the formatted string ---
-        formatted_input = response.choices[0].message.content.strip()
-        return formatted_input
+        # Open the input file in read mode and pass it to the script's stdin
+        with input_file_path.open("r", encoding="utf-8") as f:
+            # subprocess.run works on both Linux and Windows
+            result = subprocess.run(
+                [sys.executable, str(script_path)],  # Use the same Python interpreter
+                stdin=f,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,  # Return output as string instead of bytes
+                check=False  # Don't raise exception on non-zero exit
+            )
+        
+        if result.returncode != 0:
+            return f"Error running script:\n{result.stderr}"
+        
+        return result.stdout
 
     except Exception as e:
-        return f"Error: An unexpected error occurred while generating the input string: {e}"
+        return f"Exception occurred: {e}"
