@@ -85,6 +85,8 @@ async def process_request(user_request: dict) -> dict:
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
+    client = AsyncOpenAI(
+       )
     client = AsyncOpenAI()
     model = "gpt-4.1"
     

@@ -301,6 +301,7 @@ class ToolsFunctionCalling:
 
         filename = f"code_{uuid.uuid4().hex}.py"
         file_path = os.path.join(output_dir, filename)
+        # Save the clean code to the file
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -308,9 +309,14 @@ class ToolsFunctionCalling:
             print(f"Code successfully saved to: {file_path}")
         except IOError as e:
             print(f"Error saving file: {e}")
+            return None # Or handle the error as needed
+
             return None
         
         result = auto_commit_background(
+        repo_path=".",  # current repository
+        commit_message="Auto-Push",
+        should_commit=True 
             repo_path=".",
             commit_message="Auto-Push",
             should_commit=True 
