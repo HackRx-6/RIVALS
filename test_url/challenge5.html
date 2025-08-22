@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Final Challenge</title>
+  <style>
+    /* Fake clue to mislead */
+    #fake::after {
+      content: "SECRET_CODE: WRONG123";
+    }
+  </style>
+  <script>
+    function stepOne() {
+      // Step 1: Click the button
+      document.getElementById("status").innerText = "Step 1 complete. Decoding...";
+      
+      // Step 2: After 2s, reveal a base64 code
+      setTimeout(() => {
+        const encoded = "U0VDUkVUX0NPREU6IFBTSVgxMjM="; 
+        // base64 = "SECRET_CODE: PSIX123"
+        document.getElementById("hidden").innerText = encoded;
+      }, 2000);
+    }
+  </script>
+</head>
+<body>
+  <h2>Final Challenge</h2>
+  <p>You must perform the right action to get the code.</p>
+
+  <button onclick="stepOne()">Start</button>
+  <p id="status"></p>
+  <p id="hidden" style="color:white;">Nothing here yet...</p>
+
+  <iframe src="decoy.html" style="display:none;"></iframe>
+</body>
+</html>
