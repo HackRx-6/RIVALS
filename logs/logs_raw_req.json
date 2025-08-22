@@ -1,18 +1,6 @@
 [
   {
-    "timestamp": "2025-08-22T08:32:41.169164",
-    "raw_body": "{\r\n  \"url\": \"http://127.0.0.1:5500/test_url/simplept2.html\",\r\n  \"questions\": [\r\n    \"Solve the challenge in this website\"\r\n  ]\r\n}"
-  },
-  {
-    "timestamp": "2025-08-22T08:33:39.906010",
-    "raw_body": "{\r\n  \"url\": \"http://127.0.0.1:5500/test_url/challenge5.html\",\r\n  \"questions\": [\r\n    \"Solve the challenge in this website\"\r\n  ]\r\n}"
-  },
-  {
-    "timestamp": "2025-08-22T08:34:55.258981",
-    "raw_body": "{\r\n  \"url\": \"http://127.0.0.1:5500/test_url/challenge5.html\",\r\n  \"questions\": [\r\n    \"Solve the challenge in this website\"\r\n  ]\r\n}"
-  },
-  {
-    "timestamp": "2025-08-22T08:35:21.896551",
-    "raw_body": "{\r\n  \"url\": \"http://127.0.0.1:5500/test_url/challenge5.html\",\r\n  \"questions\": [\r\n    \"Solve the challenge in this website\"\r\n  ]\r\n}"
+    "timestamp": "2025-08-22T12:40:37.492916",
+    "raw_body": "{\"documents\":\"\\n    \\n    You are given two strings s and pattern.\\n    A string x is called almost equal to y if you can change at most one character in x to make it identical to y.\\n    Return the smallest starting index of a substring in s that is almost equal to pattern. If no such index exists, return -1.\\n\\n\\n\\n    Write a code to solve the problem. You should generate the code through LLM and run it and get the answer as response and return this answer as the API response.\\n    Then, also push the code in a folder names ROUND_6 to the repo STRICTLY provided by the HACKRX TEAM.\\n\\n    THIS ENTIRE CHALLENGE TO BE DONE BY LLM ONLY. NO HUMAN INTERVENTION ALLOWED. THIS INCLUDES GENERATION OF CODE, RUNNING IT AND PUSHING TO GITHUB REPO, TO THE SAME REPO PROVIDED BY THE HACKRX TEAM.\\n    \",\"questions\":[\"The value of s is abcdefg and pattern is bcdffg\",\"The value of s is ababbababa and pattern is bacaba\"],\"query\":\"\\n    \\n    You are given two strings s and pattern.\\n    A string x is called almost equal to y if you can change at most one character in x to make it identical to y.\\n    Return the smallest starting index of a substring in s that is almost equal to pattern. If no such index exists, return -1.\\n\\n\\n\\n    Write a code to solve the problem. You should generate the code through LLM and run it and get the answer as response and return this answer as the API response.\\n    Then, also push the code in a folder names ROUND_6 to the repo STRICTLY provided by the HACKRX TEAM.\\n\\n    THIS ENTIRE CHALLENGE TO BE DONE BY LLM ONLY. NO HUMAN INTERVENTION ALLOWED. THIS INCLUDES GENERATION OF CODE, RUNNING IT AND PUSHING TO GITHUB REPO, TO THE SAME REPO PROVIDED BY THE HACKRX TEAM.\\n    \",\"url\":\"\\n    \\n    You are given two strings s and pattern.\\n    A string x is called almost equal to y if you can change at most one character in x to make it identical to y.\\n    Return the smallest starting index of a substring in s that is almost equal to pattern. If no such index exists, return -1.\\n\\n\\n\\n    Write a code to solve the problem. You should generate the code through LLM and run it and get the answer as response and return this answer as the API response.\\n    Then, also push the code in a folder names ROUND_6 to the repo STRICTLY provided by the HACKRX TEAM.\\n\\n    THIS ENTIRE CHALLENGE TO BE DONE BY LLM ONLY. NO HUMAN INTERVENTION ALLOWED. THIS INCLUDES GENERATION OF CODE, RUNNING IT AND PUSHING TO GITHUB REPO, TO THE SAME REPO PROVIDED BY THE HACKRX TEAM.\\n    \"}"
   }
 ]

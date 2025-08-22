@@ -12,6 +12,9 @@ from llm_dev import process_request as process_dev_request
 # --- Import services ---
 from services.logger import log_content, log_html, log_raw_req
 from services.fetcher import fetch_html
+
+#-- Import beautify utility ---
+from utils.beautify import beautify_text
 # from llm import process_request
 
 app = FastAPI()
@@ -61,8 +64,9 @@ async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     response_data = {
         "answers": ai_response.get("answers", ["Agent did not provide a valid answer."]),
     }
-
+    response_data["answers"] = [beautify_text(a) for a in response_data["answers"]]
     return response_data
+
 
 @app.post("/hackrx/dev")
 async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
@@ -79,8 +83,9 @@ async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     response_data = {
         "answers": ai_response.get("answers", ["Agent did not provide a valid answer."]),
     }
-
+    response_data["answers"] = [beautify_text(a) for a in response_data["answers"]]
     return response_data
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
