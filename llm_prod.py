@@ -97,8 +97,8 @@ async def process_request(user_request: dict) -> dict:
     for question in user_request['questions']:
         user_prompt = (
             "Please perform the following task based only on the provided context and cite your sources in the final answer.\n\n"
-            f"Context {context_str}"
-            f"Task {question}"
+            f"Context {context_str.lower()}"
+            f"Task {question.lower()}"
     )
         
         print("🚫🚫🚫" + user_prompt)
