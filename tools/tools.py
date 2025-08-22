@@ -17,13 +17,13 @@ import re
 import os
 import uuid
 import re
-# client = AsyncOpenAI()
-client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+client = AsyncOpenAI()
+# client = AsyncOpenAI(
+#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+#         default_headers={
+#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+#     })
 
 
 
@@ -201,6 +201,8 @@ class ToolsFunctionCalling:
             return await asyncio.to_thread(_input)
         except Exception as e:
             return f"Error inputting text: {e}"
+        
+        
     async def generate_code(self, query: str, code_dir: str = "gen_code") -> str:
         """
         Generates executable code, saves it to a .py file, 
@@ -220,13 +222,10 @@ class ToolsFunctionCalling:
             ],
             temperature=0
         )
-
         raw_response = response.choices[0].message.content.strip()
         clean_code = ""
-
         # Use regex to find code inside python markdown blocks
         code_match = re.search(r"```(?:python)?\n(.*)\n```", raw_response, re.DOTALL)
-        
         if code_match:
             # If a markdown block is found, extract the code from it
             clean_code = code_match.group(1).strip()
@@ -237,7 +236,6 @@ class ToolsFunctionCalling:
         # Generate a unique filename and path
         filename = f"code_{uuid.uuid4().hex}.py"
         file_path = os.path.join(output_dir, filename)
-
         # Save the clean code to the file
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -246,24 +244,12 @@ class ToolsFunctionCalling:
         except IOError as e:
             print(f"Error saving file: {e}")
             return None # Or handle the error as needed
-        
 
         result = auto_commit_background(
-
-
         repo_path=".",  # current repository
-
-
         commit_message="Auto-Push",
-
-
         should_commit=True 
-
-
         )
-        
-
-        
         return file_path
     
 
@@ -427,6 +413,54 @@ class ToolsFunctionCalling:
             await asyncio.to_thread(self.driver.quit)
         except Exception as e:
             print(f"Error closing driver: {e}")
+
+
+
+    async def query_expander(self, query: str) -> str:
+        """
+        Rewrites a natural language query to be more concise and informative
+        by removing noise and converting it to lowercase, while preserving
+        case-sensitive information like URLs or addresses.
+
+        Args:
+            query (str): The original user prompt.
+
+        Returns:
+            str: The refined and expanded query.
+        """
+        print(f"Expanding query: {query}")
+        try:
+            # Construct the prompt for the LLM to refine the query.
+            # Use specific instructions to guide the LLM's output.
+            prompt = f"""
+            Refine the following user query to be more direct, informative, and concise.
+            Remove all conversational noise, filler words, and unnecessary pleasantries.
+            Convert the entire query to lowercase, but preserve the original casing for
+            any URLs, file paths, specific names, or addresses.
+
+            Original Query:
+            {query}
+
+            Refined Query:
+            """
+            
+            # Call the OpenAI API to get the refined query
+            response = await client.chat.completions.create(
+                model="gpt-4.1",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that refines user queries."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,
+            )
+
+            refined_query = response.choices[0].message.content.strip()
+            print(f"Refined query: {refined_query}")
+            return refined_query
+
+        except Exception as e:
+            print(f"Error in query_expander: {e}")
+            return query # Return the original query on failure
 # ==============================================================================
 #  JSON Schemas for the Tools
 # ==============================================================================
@@ -553,6 +587,26 @@ tool_definitions = [
   }
 }
 
+,
+
+
+{
+  "type": "function",
+  "function": {
+    "name": "query_expander",
+    "description": "Refines a user's prompt by making it more concise and specific, removing conversational noise, and converting it to lowercase while preserving critical information like URLs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The original user's prompt to be refined."
+        }
+      },
+      "required": ["query"]
+    }
+  }
+}
 
 
 ]

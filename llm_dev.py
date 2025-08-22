@@ -85,11 +85,7 @@ async def process_request(user_request: dict) -> dict:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
     client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+       )
     model = "gpt-4.1"
     
     context_data = {k: v for k, v in user_request.items() if k !='questions'}
@@ -99,8 +95,8 @@ async def process_request(user_request: dict) -> dict:
     for question in user_request['questions']:
         user_prompt = (
             "Please perform the following task based on the provided context.\n\n"
-            f"## Context\n{context_str.lower()}\n\n"
-            f"## Task\n{question.lower()}"
+            f"## Context\n{context_str}\n\n"
+            f"## Task\n{question}"
     )
         individual_messages = [
             {"role": "system", "content": "Your goal is to complete the user's task by using the available tools in a step-by-step manner. First, analyze the user's request and the context. Execute the plan by calling the necessary tools. If a tool fails or the result is unexpected, adjust your plan. Finally, provide a concise and direct answer to the original task. make sure to do anything in the tools complete the task. Don't ask further queries or give follow ups. Only respond with the final answer dont explain your reasoning. If it is code output just give the output don't explain , if the answer from code is empty return empty string"},
