@@ -6,16 +6,16 @@ from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 # --- Import the stateful browser class and tool schemas ---
-from tools.browser_tools import BrowserSession, tool_definitions
+from tools.tools import ToolsFunctionCalling, tool_definitions
 
-async def run_single_conversation_async(client, model, messages, tools):
+async def  run_single_conversation_async(client, model, messages, tools):
     """
     Runs a single, stateful conversation, managing its own browser lifecycle.
     """
     print(f"🤖 Starting new task: {messages[-1]['content'][:70]}...")
     
     # Key Change: Create a dedicated browser session for this task
-    browser = BrowserSession()
+    browser = ToolsFunctionCalling()
     if not browser.driver:
         return "Error: Failed to initialize browser."
 
