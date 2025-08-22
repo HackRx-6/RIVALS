@@ -97,8 +97,8 @@ async def process_request(user_request: dict) -> dict:
     for question in user_request['questions']:
         user_prompt = (
             "Please perform the following task based on the provided context.\n\n"
-            f"## Context\n{context_str}\n\n"
-            f"## Task\n{question}"
+            f"## Context\n{context_str.lower()}\n\n"
+            f"## Task\n{question.lower()}"
     )
         individual_messages = [
             {"role": "system", "content": "Your goal is to complete the user's task by using the available tools in a step-by-step manner. First, analyze the user's request and the context. Execute the plan by calling the necessary tools. If a tool fails or the result is unexpected, adjust your plan. Finally, provide a concise and direct answer to the original task. make sure to do anything in the tools complete the task. Don't ask further queries or give follow ups. Only respond with the final answer dont explain your reasoning. If it is code output just give the output don't explain , if the answer from code is empty return empty string"},
