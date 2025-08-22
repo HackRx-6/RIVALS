@@ -6,3 +6,4 @@ selenium
 openai
 requests
 webdriver_manager
+bs4
