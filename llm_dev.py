@@ -1,4 +1,3 @@
-# llm_agent.py
 import os
 import json
 import asyncio
@@ -12,14 +11,14 @@ async def run_single_conversation_async(client, model, messages, tools):
     """
     Runs a single, stateful conversation, managing its own browser lifecycle.
     """
-    print(f"🤖 Starting new task: {messages[-1]['content'][:70]}...")
-    
-    # Key Change: Create a dedicated browser session for this task
+    print(f"🤖 Starting new task: {messages[-1]['content'][-70:]}...")
+
+    # A dedicated browser session is created for this task
     browser = BrowserSession()
     if not browser.driver:
         return "Error: Failed to initialize browser."
 
-    # Key Change: Map tool names to the METHODS of the browser instance
+    # Map tool names to the METHODS of the browser instance
     available_tools = {
         "navigate": browser.navigate,
         "read_content": browser.read_content,
@@ -44,7 +43,7 @@ async def run_single_conversation_async(client, model, messages, tools):
                 print("✅ Model finished the task.")
                 break
 
-            print(f"🛠️ Model wants to use {len(tool_calls)} tool(s)...")
+            print(f"🛠️  Model wants to use {len(tool_calls)} tool(s)...")
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
                 function_to_call = available_tools.get(function_name)
@@ -54,9 +53,9 @@ async def run_single_conversation_async(client, model, messages, tools):
                     continue
 
                 function_args = json.loads(tool_call.function.arguments)
-                print(f"   - Calling: {function_name}({function_args})")
+                print(f"  - Calling: {function_name}({function_args})")
                 
-                # Key Change: 'await' the async tool function
+                # 'await' the async tool function
                 function_response = await function_to_call(**function_args)
                 
                 messages.append({
@@ -64,15 +63,17 @@ async def run_single_conversation_async(client, model, messages, tools):
                     "name": function_name, "content": str(function_response),
                 })
         
-        return messages[-1].content
+        # Ensure content exists before accessing it
+        final_content = response_message.content if response_message else "No final message content from model."
+        return final_content
     
     finally:
-        # Key Change: CRITICAL - Ensure the browser is closed after the task is done
+        # CRITICAL - Ensure the browser is closed after the task is done
         await browser.close()
 
 async def process_request(user_request: dict) -> dict:
     """
-    Takes a user request and runs all tasks in parallel.
+    Takes a user request, formats it with general context, and runs all tasks in parallel.
     """
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
@@ -80,13 +81,27 @@ async def process_request(user_request: dict) -> dict:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
     client = AsyncOpenAI(api_key=api_key)
-    model = "gpt-4.1"
+    model = "gpt-4-turbo-preview"  # Using a recommended model for tool use
+    
+    # --- KEY CHANGE: Create a generalized context from the request ---
+    # Copy all keys from the user request EXCEPT for 'questions'
+    context_data = {k: v for k, v in user_request.items() if k != 'questions'}
+    
+    # Format the context into a string for the prompt
+    context_str = "\n".join([f"- {key}: {value}" for key, value in context_data.items()])
     
     tasks = []
     for question in user_request['questions']:
+        # --- KEY CHANGE: More generalized system and user prompts ---
+        user_prompt = (
+            "Please perform the following task based on the provided context.\n\n"
+            f"## Context\n{context_str}\n\n"
+            f"## Task\n{question}"
+        )
+
         individual_messages = [
-            {"role": "system", "content": "You are a web automation assistant. Start by navigating to the specified URL and then follow the user's website instructions or instructions on the website to complete the task."},
-            {"role": "user", "content": f"Please perform the following task on the website {user_request['url']}. Task: {question}"}
+            {"role": "system", "content": "You are a helpful AI assistant. Analyze the provided context and use the available tools to complete the user's task. If the context contains a 'url', your first step should be to navigate to it."},
+            {"role": "user", "content": user_prompt}
         ]
         
         # Each task gets the full list of tool definitions
@@ -112,11 +127,13 @@ if __name__ == "__main__":
     with open("test_page.html", "w") as f:
         f.write(html_content)
     
-    test_url = 'file://' + os.path.realpath("test_page.html")
+    # Generate a platform-independent file URI
+    test_url = 'file:///' + os.path.realpath("test_page.html").replace('\\', '/')
 
-    # Define a sample request with a multi-step task
+    # Define a sample request with a multi-step task and extra context
     sample_request = {
         "url": test_url,
+        "user_id": "test-user-123", # Example of extra data
         "questions": [
             "Read the main heading, then type 'Agent Smith' into the name field, and finally click the 'Submit' button."
         ]
