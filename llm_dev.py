@@ -28,6 +28,7 @@ async def run_single_conversation_async(client, model, messages, tools):
         "generate_code": browser.generate_code,
         "generate_code_input_from_file": browser.generate_code_input_from_file,
         "run_python_with_input": browser.run_python_with_input,
+        "observe_attribute_change": browser.observe_attribute_change,
     }
 
     try:
@@ -84,8 +85,7 @@ async def process_request(user_request: dict) -> dict:
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
-    client = AsyncOpenAI(
-       )
+    client = AsyncOpenAI()
     model = "gpt-4.1"
     
     context_data = {k: v for k, v in user_request.items() if k !='questions'}
