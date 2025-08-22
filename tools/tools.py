@@ -154,71 +154,85 @@ class ToolsFunctionCalling:
     This version is fully asynchronous to work with the asyncio framework.
     """
     def __init__(self):
+        self.driver = None
+        print("✅ Toolset initialized. Browser will start on first use.")
+
+    async def start_browser(self) -> str:
+        if self.driver:
+            return "Browser session is already active."
         print("🚀 Initializing browser session setup...")
+        try:
+            await asyncio.to_thread(self._start_driver_sync)
+            print("✅ Browser driver initialized successfully.")
+            return "Browser session started successfully."
+        except Exception as e:
+            print(f"❌ Error initializing browser: {e}")
+            return f"Error initializing browser: {e}"
+
+    def _start_driver_sync(self):
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        print("✅ Browser driver initialized.")
+
+    async def _ensure_browser_started(self):
+        """Checks if the browser is started, and starts it if not."""
+        if not self.driver:
+            print("Browser not started. Initializing now...")
+            await self.start_browser()
+            if not self.driver:
+                 raise RuntimeError("Failed to start the browser session.")
+
 
     async def navigate(self, url: str) -> str:
-        """Asynchronously navigates the browser to a specific URL."""
         try:
+            await self._ensure_browser_started()
             await asyncio.to_thread(self.driver.get, url)
             return f"Successfully navigated to {url}."
         except Exception as e:
             return f"Error navigating: {e}"
 
     async def read_content(self) -> str:
-        """Asynchronously reads the HTML body of the current page."""
         try:
+            await self._ensure_browser_started()
             def _get_source():
-                import time
                 time.sleep(0.5)
                 soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                 body = soup.find('body')
                 if not body: return "Error: Could not find the <body> tag."
                 for tag in body.find_all(['script', 'style']):
                     tag.decompose()
-
-                print(str(body))
                 return str(body)
             return await asyncio.to_thread(_get_source)
         except Exception as e:
             return f"Error reading content: {e}"
 
     async def click_element(self, tag_name: str, text_content: str) -> str:
-        """Asynchronously clicks an element by its tag and text."""
         try:
+            await self._ensure_browser_started()
             def _click():
                 xpath = f"//{tag_name}[contains(., '{text_content}')]"
                 element = self.driver.find_element(By.XPATH, xpath)
                 element.click()
-                return f"Successfully clicked the '{tag_name}' with text '{text_content}'."
+                return f"Successfully clicked '{tag_name}' with text '{text_content}'."
             return await asyncio.to_thread(_click)
         except Exception as e:
             return f"Error clicking element: {e}"
 
     async def input_text(self, placeholder_text: str, text_to_input: str, tag_name: str = "input") -> str:
-        """Asynchronously types text into an input field."""
         try:
+            await self._ensure_browser_started()
             def _input():
                 xpath = f"//{tag_name}[@placeholder='{placeholder_text}']"
                 element = self.driver.find_element(By.XPATH, xpath)
                 element.clear()
                 element.send_keys(text_to_input)
-                return f"Successfully typed '{text_to_input}' into the field."
+                return f"Successfully typed '{text_to_input}'."
             return await asyncio.to_thread(_input)
         except Exception as e:
             return f"Error inputting text: {e}"
-  
-
-    # --- Make sure this is defined somewhere in your class ---
-    # self.output_dir = "generated_code" 
-    # os.makedirs(self.output_dir, exist_ok=True)
-
     async def generate_code(self, query: str, code_dir: str = "gen_code") -> str:
         """
         Generates executable code, saves it to a .py file, 
