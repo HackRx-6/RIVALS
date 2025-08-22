@@ -7,7 +7,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 # ToolsFunctionCalling
 from openai import AsyncOpenAI
-
+import time
 
 import subprocess
 import sys
@@ -17,13 +17,13 @@ import re
 import os
 import uuid
 import re
-# client = AsyncOpenAI()
-client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+client = AsyncOpenAI()
+# client = AsyncOpenAI(
+#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+#         default_headers={
+#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+#     })
 
 
 
@@ -86,6 +86,7 @@ def _run_git_commit(repo_path=".", commit_message="Auto-commit", should_commit=T
         error_message = f"Git command failed with exit code {e.returncode}:\n"
         error_message += f"STDOUT: {e.stdout.strip()}\n"
         error_message += f"STDERR: {e.stderr.strip()}"
+        print(error_message)
         return error_message
     except FileNotFoundError:
         return "Error: 'git' command not found. Is Git installed and in your PATH?"
@@ -138,7 +139,7 @@ class ToolsFunctionCalling:
 
     def _start_driver_sync(self):
         chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless")
+        # chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         service = Service(ChromeDriverManager().install())
