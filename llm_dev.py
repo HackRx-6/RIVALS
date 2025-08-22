@@ -81,7 +81,7 @@ async def process_request(user_request: dict) -> dict:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
     client = AsyncOpenAI(api_key=api_key)
-    model = "gpt-4-turbo-preview"  # Using a recommended model for tool use
+    model = "gpt-4.1"  # Using a recommended model for tool use
     
     # --- KEY CHANGE: Create a generalized context from the request ---
     # Copy all keys from the user request EXCEPT for 'questions'
@@ -100,7 +100,7 @@ async def process_request(user_request: dict) -> dict:
         )
 
         individual_messages = [
-            {"role": "system", "content": "You are a helpful AI assistant. Analyze the provided context and use the available tools to complete the user's task. If the context contains a 'url', your first step should be to navigate to it."},
+            {"role": "system", "content": "Your goal is to complete the user's task by using the available tools in a step-by-step manner. First, analyze the user's request and the context. Execute the plan by calling the necessary tools. If a tool fails or the result is unexpected, adjust your plan. Finally, provide a concise and direct answer to the original task. make sure to do anything in the tools or your knowledge to complete the task. Don't ask further queries or give follow ups"},
             {"role": "user", "content": user_prompt}
         ]
         

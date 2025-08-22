@@ -73,6 +73,7 @@ async def run_single_conversation_async(client, model, messages, tools):
 async def process_request(user_request: dict) -> dict:
     """
     Takes a user request and runs all tasks in parallel.
+    Builds context gracefully (url, queries, or any extra keys).
     """
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
@@ -80,22 +81,47 @@ async def process_request(user_request: dict) -> dict:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
     client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+        api_key="YOUR_API_KEY_PLACEHOLDER",  # Proxy handles header key
+        base_url="https://register.hackrx.in/llm/openai",
         default_headers={
             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+        },
+    )
     model = "gpt-4.1"
-    
+
+    # ✅ Build context dynamically (same as dev but fits current structure)
+    context_data = {k: v for k, v in user_request.items() if k != "questions"}
+    if context_data:
+        context_str = "\n".join([f"- {key}: {value}" for key, value in context_data.items()])
+    else:
+        context_str = "No additional context provided."
+
     tasks = []
-    for question in user_request['questions']:
+    for question in user_request["questions"]:
+        user_prompt = (
+            "Please perform the following task based on the provided context.\n\n"
+            f"## Context\n{context_str}\n\n"
+            f"## Task\n{question}"
+        )
+
         individual_messages = [
-            {"role": "system", "content": "You are a web automation assistant. Start by navigating to the specified URL and then follow the user's website instructions or instructions on the website to complete the task."},
-            {"role": "user", "content": f"Please perform the following task on the website {user_request['url']}. Task: {question}"}
+            {
+                "role": "system",
+                "content": (
+                    "Your goal is to complete the user's task by using the available tools "
+                    "in a step-by-step manner. First, analyze the user's request and the context. "
+                    "Execute the plan by calling the necessary tools. If a tool fails or the result "
+                    "is unexpected, adjust your plan. Finally, provide a concise and direct answer "
+                    "to the original task. Make sure to do anything in the tools or your knowledge "
+                    "to complete the task. Don't ask further queries or give follow ups."
+                ),
+            },
+            {"role": "user", "content": user_prompt},
         ]
-        
-        # Each task gets the full list of tool definitions
-        task = run_single_conversation_async(client, model, individual_messages, tool_definitions)
+
+        task = run_single_conversation_async(
+            client, model, individual_messages, tool_definitions
+        )
         tasks.append(task)
 
     print(f"🚀 Running {len(tasks)} tasks in parallel...")
