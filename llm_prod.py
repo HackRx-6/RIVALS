@@ -71,7 +71,8 @@ async def run_single_conversation_async(client, model, messages, tools):
     
     finally:
         # Key Change: CRITICAL - Ensure the browser is closed after the task is done
-        await browser.close()
+        # await browser.close()
+        pass
 
 async def process_request(user_request: dict) -> dict:
     """
