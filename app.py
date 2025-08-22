@@ -49,8 +49,8 @@ async def run(req: RunRequest, token: str = Depends(verify_token)):
 
     # 🔹 Simulated answers
     response_data = {
-        "url": url,
-        "questions": questions,
+        # "url": url,
+        # "questions": questions,
         "answers": [f"Answer placeholder for: {q}" for q in questions],
     }
     print(f"[DEBUG] Prepared response: {response_data}")
@@ -83,8 +83,8 @@ async def run(req: RunRequest, token: str = Depends(verify_token)):
 
     # 🔹 Prepare the final response data using the agent's answers
     response_data = {
-        "url": url,
-        "questions": questions,
+        # "url": url,
+        # "questions": questions,
         # Use .get() for safety in case the agent's response is malformed
         "answers": ai_response.get("answers", ["Agent did not provide a valid answer."]),
     }
