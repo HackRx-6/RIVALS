@@ -6,6 +6,21 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 # ToolsFunctionCalling
+from openai import AsyncOpenAI
+  
+import re
+import os
+import uuid
+import re
+client = AsyncOpenAI()
+# client = AsyncOpenAI(
+#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+#         default_headers={
+#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+#     })
+
+
 class ToolsFunctionCalling:
     """
     Manages a single, persistent Selenium WebDriver session.
@@ -71,6 +86,62 @@ class ToolsFunctionCalling:
             return await asyncio.to_thread(_input)
         except Exception as e:
             return f"Error inputting text: {e}"
+  
+
+    # --- Make sure this is defined somewhere in your class ---
+    # self.output_dir = "generated_code" 
+    # os.makedirs(self.output_dir, exist_ok=True)
+
+    async def generate_code(self, query: str):
+        """
+        Generates executable code, saves it to a .py file, 
+        and returns the file path.
+        """
+        print(f"Generating code for query: {query}")
+        
+        # Define and ensure the output directory exists
+        output_dir = "generated_code"
+        os.makedirs(output_dir, exist_ok=True)
+
+        response = await client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[
+                {"role": "system", "content": "You are a coding assistant. Respond with ONLY EXECUTABLE CODE, no explanations. Do not use markdown formatting. Also the code should be written in a way that users will give inputs for it to run"},
+                {"role": "user", "content": query}
+            ],
+            temperature=0
+        )
+
+        raw_response = response.choices[0].message.content.strip()
+        clean_code = ""
+
+        # Use regex to find code inside python markdown blocks
+        code_match = re.search(r"```(?:python)?\n(.*)\n```", raw_response, re.DOTALL)
+        
+        if code_match:
+            # If a markdown block is found, extract the code from it
+            clean_code = code_match.group(1).strip()
+        else:
+            # Otherwise, assume the whole response is the code
+            clean_code = raw_response
+
+        # Generate a unique filename and path
+        filename = f"code_{uuid.uuid4().hex}.py"
+        file_path = os.path.join(output_dir, filename)
+
+        # Save the clean code to the file
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(clean_code)
+            print(f"Code successfully saved to: {file_path}")
+        except IOError as e:
+            print(f"Error saving file: {e}")
+            return None # Or handle the error as needed
+
+        # Return the path to the newly created file
+        return file_path
+
+
 
     async def close(self):
         """Asynchronously closes the browser session."""
@@ -134,5 +205,22 @@ tool_definitions = [
                 "required": ["placeholder_text", "text_to_input"],
             },
         }
+    },
+   {
+    "type": "function",
+    "function": {
+        "name": "generate_code",
+        "description": "Generates executable code for a given coding query without and rreturns the file path where the code is saved.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The coding problem or request to generate code for."
+                }
+            },
+            "required": ["query"]
+        }
     }
+}
 ]

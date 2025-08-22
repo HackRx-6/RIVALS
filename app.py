@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import uvicorn
 import os
@@ -22,7 +22,7 @@ load_dotenv()
 SECRET_TOKEN = os.getenv("BEARER_TOKEN")
 
 class RunRequest(BaseModel):
-    url: str
+    model_config = ConfigDict(extra='allow')
     questions: list[str]
 
 # ✅ Middleware for logging raw requests
@@ -49,8 +49,8 @@ async def verify_token(token: str = "dummy_token"):
 @app.post("/hackrx/prod")
 async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     timestamp = datetime.utcnow().isoformat()
-    url = req.url
-    questions = req.questions
+    # url = req.url
+    # questions = req.questions
 
     try:
         ai_response = await process_prod_request(req.dict())
@@ -67,8 +67,8 @@ async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
 @app.post("/hackrx/dev")
 async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     timestamp = datetime.utcnow().isoformat()
-    url = req.url
-    questions = req.questions
+    # url = req.url
+    # questions = req.questions
 
     try:
         ai_response = await process_dev_request(req.dict())
