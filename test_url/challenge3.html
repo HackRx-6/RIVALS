@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Challenge 3</title>
+  <script>
+    function changeCode() {
+      const codes = ["GAMMA789", "DELTA999", "EPSILON777"];
+      const code = codes[Math.floor(Math.random() * codes.length)];
+      document.getElementById("dynamic").innerText = "SECRET_CODE: " + code;
+    }
+    setInterval(changeCode, 3000);
+  </script>
+</head>
+<body onload="changeCode()">
+  <h2>Challenge 3</h2>
+  <p>The code changes every 3 seconds:</p>
+  <p id="dynamic"></p>
+</body>
+</html>
