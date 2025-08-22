@@ -5,3 +5,4 @@ dotenv
 selenium
 openai
 requests
+webdriver_manager

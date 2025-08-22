@@ -102,8 +102,16 @@ def process_request(user_request: dict) -> dict:
         raise FileNotFoundError("browser_tools_schema.json not found. Please ensure it's in the same directory.")
 
     # --- Format the initial message for the model ---
-    prompt = f"Please perform the following tasks on the website {user_request['url']}. Task: {user_request['questions'][0]}"
-    messages = [{"role": "user", "content": prompt}]
+    messages = [
+        {
+            "role": "system",
+            "content": "Use provided tools to interact with the website. Do not include extra information and answer to the point, dont include the steps, just the answer."
+        },
+        {
+            "role": "user",
+            "content": f"Please perform the following tasks on the website {user_request['url']}. Task: {user_request['questions'][0]}"
+        }
+    ]
 
     # --- Run the conversation ---
     final_answer = run_conversation(client, model, messages, tools)
