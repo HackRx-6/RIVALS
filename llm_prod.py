@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # --- Import the stateful browser class and tool schemas ---
 from tools.tools import ToolsFunctionCalling, tool_definitions
 
-async def  run_single_conversation_async(client, model, messages, tools):
+async def run_single_conversation_async(client, model, messages, tools):
     """
     Runs a single, stateful conversation, managing its own browser lifecycle.
     """
@@ -25,6 +25,9 @@ async def  run_single_conversation_async(client, model, messages, tools):
         "read_content": browser.read_content,
         "click_element": browser.click_element,
         "input_text": browser.input_text,
+        "generate_code": browser.generate_code,
+        "generate_code_input_from_file": browser.generate_code_input_from_file,
+        "run_python_with_input": browser.run_python_with_input,
     }
 
     try:
@@ -87,11 +90,23 @@ async def process_request(user_request: dict) -> dict:
     })
     model = "gpt-4.1"
     
+    context_data = {k: v for k, v in user_request.items() if k !='questions'}
+    context_str = "\n".join([f"- : {value}" for key, value in context_data.items()])
+    
     tasks = []
     for question in user_request['questions']:
+        user_prompt = (
+            "Please perform the following task based only on the provided context and cite your sources in the final answer.\n\n"
+            f"Context {context_str}"
+            f"Task {question}"
+    )
+        
+        print("🚫🚫🚫" + user_prompt)
+
+        # user_prompt = "say hello"
         individual_messages = [
-            {"role": "system", "content": "You are a web automation assistant. Start by navigating to the specified URL and then follow the user's website instructions or instructions on the website to complete the task."},
-            {"role": "user", "content": f"Please perform the following task on the website {user_request['url']}. Task: {question}"}
+            {"role": "system", "content": "Your goal is to complete the user's task by using the available tools in a step-by-step manner. First, analyze the user's request and the context. Execute the plan by calling the necessary tools. If a tool fails or the result is unexpected, adjust your plan. Finally, provide a concise and direct answer to the original task. make sure to do anything in the tools complete the task. Don't ask further queries or give follow ups."},
+            {"role": "user", "content": user_prompt}
         ]
         
         # Each task gets the full list of tool definitions
