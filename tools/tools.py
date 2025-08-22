@@ -1,12 +1,12 @@
-# browser_tools.py
+# tools.py
 import asyncio
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
-
-class BrowserSession:
+# ToolsFunctionCalling
+class ToolsFunctionCalling:
     """
     Manages a single, persistent Selenium WebDriver session.
     This version is fully asynchronous to work with the asyncio framework.
