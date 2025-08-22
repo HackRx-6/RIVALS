@@ -234,5 +234,41 @@
   {
     "timestamp": "2025-08-22T20:53:42.604832",
     "raw_body": "{\"documents\":\"\\n    \\n    You are given two strings s and pattern.\\n    A string x is called almost equal to y if you can change at most one character in x to make it identical to y.\\n    Return the smallest starting index of a substring in s that is almost equal to pattern. If no such index exists, return -1.\\n\\n\\n\\n    Write a code to solve the problem. You should generate the code through LLM and run it and get the answer as response and return this answer as the API response.\\n    Then, also push the code in a folder names ROUND_6 to the repo STRICTLY provided by the HACKRX TEAM.\\n\\n    THIS ENTIRE CHALLENGE TO BE DONE BY LLM ONLY. NO HUMAN INTERVENTION ALLOWED. THIS INCLUDES GENERATION OF CODE, RUNNING IT AND PUSHING TO GITHUB REPO, TO THE SAME REPO PROVIDED BY THE HACKRX TEAM.\\n    \",\"questions\":[\"The value of s is abcdefg and pattern is bcdffg\",\"The value of s is ababbababa and pattern is bacaba\"],\"query\":\"\\n    \\n    You are given two strings s and pattern.\\n    A string x is called almost equal to y if you can change at most one character in x to make it identical to y.\\n    Return the smallest starting index of a substring in s that is almost equal to pattern. If no such index exists, return -1.\\n\\n\\n\\n    Write a code to solve the problem. You should generate the code through LLM and run it and get the answer as response and return this answer as the API response.\\n    Then, also push the code in a folder names ROUND_6 to the repo STRICTLY provided by the HACKRX TEAM.\\n\\n    THIS ENTIRE CHALLENGE TO BE DONE BY LLM ONLY. NO HUMAN INTERVENTION ALLOWED. THIS INCLUDES GENERATION OF CODE, RUNNING IT AND PUSHING TO GITHUB REPO, TO THE SAME REPO PROVIDED BY THE HACKRX TEAM.\\n    \",\"url\":\"\\n    \\n    You are given two strings s and pattern.\\n    A string x is called almost equal to y if you can change at most one character in x to make it identical to y.\\n    Return the smallest starting index of a substring in s that is almost equal to pattern. If no such index exists, return -1.\\n\\n\\n\\n    Write a code to solve the problem. You should generate the code through LLM and run it and get the answer as response and return this answer as the API response.\\n    Then, also push the code in a folder names ROUND_6 to the repo STRICTLY provided by the HACKRX TEAM.\\n\\n    THIS ENTIRE CHALLENGE TO BE DONE BY LLM ONLY. NO HUMAN INTERVENTION ALLOWED. THIS INCLUDES GENERATION OF CODE, RUNNING IT AND PUSHING TO GITHUB REPO, TO THE SAME REPO PROVIDED BY THE HACKRX TEAM.\\n    \"}"
+  },
+  {
+    "timestamp": "2025-08-22T21:05:19.614205",
+    "raw_body": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\r\n    \"questions\": [\r\n        \"Navigate to the provided URL and set the video volume to 10 percent.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:06:22.462362",
+    "raw_body": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\r\n    \"questions\": [\r\n        \"Navigate to the provided URL and set the video volume to 10 percent.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:06:33.797459",
+    "raw_body": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\r\n    \"questions\": [\r\n        \"Navigate to the provided URL and set the video volume to 10 percent.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:07:07.349754",
+    "raw_body": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\r\n    \"questions\": [\r\n        \"Navigate to the provided URL and set the video volume to 10 percent.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:09:24.915358",
+    "raw_body": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\r\n    \"questions\": [\r\n        \"Navigate to the provided URL and set the video volume to 10 percent.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:09:44.124229",
+    "raw_body": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\r\n    \"questions\": [\r\n        \"Navigate to the provided URL and set the video volume to 10 percent.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:10:44.408078",
+    "raw_body": "{\r\n    \"url\": \"https://en.wikipedia.org/wiki/India\",\r\n    \"questions\": [\r\n        \"Navigate to this page and scroll all the way to the bottom.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:11:58.046351",
+    "raw_body": "{\r\n    \"url\": \"https://en.wikipedia.org/wiki/Software_testing\",\r\n    \"questions\": [\r\n        \"Go to this page and change the background color of the main heading to yellow to highlight it.\"\r\n    ]\r\n}"
+  },
+  {
+    "timestamp": "2025-08-22T21:12:15.158604",
+    "raw_body": "{\r\n    \"url\": \"https://en.wikipedia.org/wiki/Software_testing\",\r\n    \"questions\": [\r\n        \"Go to this page and change the background color of the main heading to yellow to highlight it.\"\r\n    ]\r\n}"
   }
 ]

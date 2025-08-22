@@ -156,12 +156,36 @@ class ToolsFunctionCalling:
     def __init__(self):
         print("🚀 Initializing browser session setup...")
         chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless")
+        #chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         print("✅ Browser driver initialized.")
+    # In tools.py, inside the ToolsFunctionCalling class
+
+    async def execute_javascript(self, script: str) -> str:
+        """
+        Executes a string of JavaScript code on the current webpage.
+        This is useful for direct DOM manipulation, like controlling video players,
+        modifying styles, or triggering custom events not possible with other tools.
+        
+        Args:
+            script (str): The JavaScript code to execute. For example:
+                          "document.querySelector('video').volume = 0.1;"
+
+        Returns:
+            A confirmation message or the result from the script execution.
+        """
+        print(f"Executing JavaScript: {script}")
+        try:
+            # Wrap the synchronous selenium call in an async-friendly thread
+            result = await asyncio.to_thread(
+                self.driver.execute_script, script
+            )
+            return f"JavaScript executed successfully. Result: {result}"
+        except Exception as e:
+            return f"Error executing JavaScript: {e}"
 
     async def navigate(self, url: str) -> str:
         """Asynchronously navigates the browser to a specific URL."""
@@ -460,6 +484,25 @@ tool_definitions = [
                 "properties": {"url": {"type": "string", "description": "The full URL to navigate to."}},
                 "required": ["url"],
             },
+        }
+    },
+
+
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_javascript",
+            "description": "Executes custom JavaScript code on the current page. Use this for complex interactions not covered by other tools, such as controlling video/audio players, interacting with sliders, or directly manipulating element properties.",
+            "parameters": {
+            "type": "object",
+            "properties": {
+                "script": {
+                "type": "string",
+                "description": "The string of JavaScript code to execute. For example: 'document.querySelector(\"video\").volume = 0.1;' to set a video's volume to 10%."
+                }
+            },
+            "required": ["script"]
+            }
         }
     },
     {
