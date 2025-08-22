@@ -6,6 +6,9 @@ import uvicorn
 import os
 from dotenv import load_dotenv
 
+from llm_prod import process_request as process_prod_request
+from llm_dev import process_request as process_dev_request    
+
 # --- Import services ---
 from services.logger import log_content, log_html, log_raw_req
 from services.fetcher import fetch_html
@@ -39,26 +42,6 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=403, detail="Invalid or missing token")
     return credentials.credentials
 
-@app.post("/hackrx/dev")
-async def run_dev(req: RunRequest, token: str = Depends(verify_token)):
-    timestamp = datetime.utcnow().isoformat()
-    url = req.url
-    questions = req.questions
-
-    # Fetch HTML
-    html_content = await fetch_html(url)
-
-    # Placeholder answers
-    response_data = {
-        "answers": [f"Answer placeholder for: {q}" for q in questions],
-    }
-
-    # Logs
-    log_content(req.dict(), url, questions, timestamp, response_data)
-    log_html(req.dict(), url, html_content)
-
-    return response_data
-
 @app.post("/hackrx/prod")
 async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     timestamp = datetime.utcnow().isoformat()
@@ -66,7 +49,24 @@ async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     questions = req.questions
 
     try:
-        ai_response = process_request(req.dict())
+        ai_response = process_prod_request(req.dict())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent processing failed: {e}")
+
+    response_data = {
+        "answers": ai_response.get("answers", ["Agent did not provide a valid answer."]),
+    }
+
+    return response_data
+
+@app.post("/hackrx/dev")
+async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
+    timestamp = datetime.utcnow().isoformat()
+    url = req.url
+    questions = req.questions
+
+    try:
+        ai_response = process_dev_request(req.dict())
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent processing failed: {e}")
 
