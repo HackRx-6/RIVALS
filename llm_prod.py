@@ -96,7 +96,7 @@ async def process_request(user_request: dict) -> dict:
     tasks = []
     for question in user_request['questions']:
         user_prompt = (
-            "Please perform the following task based only on the provided context and cite your sources in the final answer.\n\n"
+            "Please perform the following task based on the provided context"
             f"Context {context_str.lower()}"
             f"Task {question.lower()}"
     )
