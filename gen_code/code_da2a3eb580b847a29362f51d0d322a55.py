@@ -1,6 +1,3 @@
-s = input()
-pattern = input()
-
 def almost_equal_substring_index(s, pattern):
     n, m = len(s), len(pattern)
     for i in range(n - m + 1):
@@ -14,4 +11,6 @@ def almost_equal_substring_index(s, pattern):
             return i
     return -1
 
+s = input()
+pattern = input()
 print(almost_equal_substring_index(s, pattern))
