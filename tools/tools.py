@@ -17,13 +17,13 @@ import re
 import os
 import uuid
 import re
-# client = AsyncOpenAI()
-client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+client = AsyncOpenAI()
+# client = AsyncOpenAI(
+#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+#         default_headers={
+#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+#     })
 
 
 
