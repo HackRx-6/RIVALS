@@ -27,127 +27,94 @@ client = AsyncOpenAI(
 
 
 
+import subprocess
+import logging
+from concurrent.futures import ThreadPoolExecutor
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+executor = ThreadPoolExecutor(max_workers=1)
 
 
-
-
-def auto_commit(repo_path=".", commit_message="Auto-commit", should_commit=True) -> str:
+def _run_git_commit(repo_path=".", commit_message="Auto-commit", should_commit=True) -> str:
     """
-    Conditionally commits and pushes changes in a Git repository.
+    The core logic for committing and pushing changes in a Git repository.
+    This function is intended to be run in a background thread.
+
     Args:
         repo_path (str): Path to the Git repository.
-        commit_message (str): Commit message.
-        should_commit (bool): Only commit if True.
+        commit_message (str): The message for the commit.
+        should_commit (bool): A flag to conditionally skip the commit.
 
     Returns:
-
-
-        str: Result message.
-
-
+        str: A message indicating the result of the operation.
     """
-
-
     if not should_commit:
-
-
         return "Auto-commit skipped (parameter condition not met)."
 
-
-
-
-
     try:
-
-
-        # Stage all changes
-
-
-        subprocess.run(
-
-
-            ["git", "-C", repo_path, "add", "."],
-
-
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-
-
+        # Check for changes before staging. If no changes, exit early.
+        # This is more efficient than staging and then checking.
+        status_check = subprocess.run(
+            ["git", "-C", repo_path, "status", "--porcelain"],
+            capture_output=True, text=True, check=True
         )
-
-
-
-
-
-        # Check if there are any changes to commit
-
-
-        diff_check = subprocess.run(
-
-
-            ["git", "-C", repo_path, "diff-index", "--quiet", "HEAD", "--"],
-
-
-            text=True
-
-
-        )
-
-
-        if diff_check.returncode == 0:
-
-
+        if not status_check.stdout.strip():
             return "No changes detected. Nothing to commit."
 
-
-
-
-
-        # Commit changes
-
-
+        # Stage all changes ("git add .")
         subprocess.run(
+            ["git", "-C", repo_path, "add", "."],
+            check=True, capture_output=True, text=True
+        )
 
-
+        # Commit the staged changes
+        subprocess.run(
             ["git", "-C", repo_path, "commit", "-m", commit_message],
-
-
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-
-
+            check=True, capture_output=True, text=True
         )
 
-
-
-
-
-        # Push changes
-
-
+        # Push the changes to the remote repository
         subprocess.run(
-
-
             ["git", "-C", repo_path, "push"],
-
-
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-
-
+            check=True, capture_output=True, text=True
         )
-
-
-
-
 
         return "Changes committed and pushed successfully."
 
-
-
-
-
     except subprocess.CalledProcessError as e:
+        # If any git command fails, return the error message
+        error_message = f"Git command failed with exit code {e.returncode}:\n"
+        error_message += f"STDOUT: {e.stdout.strip()}\n"
+        error_message += f"STDERR: {e.stderr.strip()}"
+        return error_message
+    except FileNotFoundError:
+        return "Error: 'git' command not found. Is Git installed and in your PATH?"
+    except Exception as e:
+        return f"An unexpected error occurred: {e}"
 
 
-        return f"Git command failed:\n{e.stderr}"
+def auto_commit_background(repo_path=".", commit_message="Auto-commit", should_commit=True):
+    """
+    Schedules the git commit and push operation to run in the background.
+    This function returns immediately and does not need to be awaited.
+
+    Args:
+        repo_path (str): Path to the Git repository.
+        commit_message (str): The message for the commit.
+        should_commit (bool): A flag to conditionally skip the commit.
+    """
+    logging.info(f"Scheduling auto-commit for repository: {repo_path}")
+    
+    # Submit the core logic to the thread pool executor
+    future = executor.submit(_run_git_commit, repo_path, commit_message, should_commit)
+    
+    # Optional: Add a callback to log the result when the task is done
+    def log_result(fut):
+        result = fut.result()
+        logging.info(f"Background commit task finished. Result: {result}")
+
+    future.add_done_callback(log_result)
+
 class ToolsFunctionCalling:
     """
     Manages a single, persistent Selenium WebDriver session.
@@ -280,7 +247,7 @@ class ToolsFunctionCalling:
             return None # Or handle the error as needed
         
 
-        result = auto_commit(
+        result = auto_commit_background(
 
 
         repo_path=".",  # current repository
