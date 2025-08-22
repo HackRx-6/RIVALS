@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # --- Import the stateful browser class and tool schemas ---
 from tools.tools import ToolsFunctionCalling, tool_definitions
-
+from client import get_client, MODEL
 async def run_single_conversation_async(client, model, messages, tools):
     """
     Runs a single, stateful conversation, managing its own browser lifecycle.
@@ -79,7 +79,7 @@ async def process_request(user_request: dict) -> dict:
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
-    client = AsyncOpenAI(api_key=api_key)
+    client = get_client()  # fresh client with updated keys
     model = "gpt-4.1"
     
     tasks = []
@@ -90,7 +90,7 @@ async def process_request(user_request: dict) -> dict:
         ]
         
         # Each task gets the full list of tool definitions
-        task = run_single_conversation_async(client, model, individual_messages, tool_definitions)
+        task = run_single_conversation_async(client, MODEL, individual_messages, tool_definitions)
         tasks.append(task)
 
     print(f"🚀 Running {len(tasks)} tasks in parallel...")

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # --- Import the stateful browser class and tool schemas ---
 from tools.tools import ToolsFunctionCalling, tool_definitions
-
+from client import get_client, MODEL
 async def  run_single_conversation_async(client, model, messages, tools):
     """
     Runs a single, stateful conversation, managing its own browser lifecycle.
@@ -79,14 +79,14 @@ async def process_request(user_request: dict) -> dict:
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
-    client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
-    model = "gpt-4.1"
-    
+    # client = AsyncOpenAI(
+    #     api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+    #     base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+    #     default_headers={
+    #         "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+    # })
+    # model = "gpt-4.1"
+    client = get_client()  # fresh client with updated keys
     tasks = []
     for question in user_request['questions']:
         individual_messages = [
@@ -95,7 +95,7 @@ async def process_request(user_request: dict) -> dict:
         ]
         
         # Each task gets the full list of tool definitions
-        task = run_single_conversation_async(client, model, individual_messages, tool_definitions)
+        task = run_single_conversation_async(client, MODEL, individual_messages, tool_definitions)
         tasks.append(task)
 
     print(f"🚀 Running {len(tasks)} tasks in parallel...")

@@ -1,21 +1,23 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 from datetime import datetime
 import uvicorn
 import os
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
+from client import get_client, MODEL
+# --- Utils ---
+from utils.read_subscription_key import read_subscription_key
+from utils.write_subscription_key import write_subscription_key
+from utils.beautify import beautify_text
 
+# --- LLM handlers ---
 from llm_prod import process_request as process_prod_request
 from llm_dev import process_request as process_dev_request    
 
-# --- Import services ---
-from services.logger import log_content, log_html, log_raw_req
-from services.fetcher import fetch_html
-
-#-- Import beautify utility ---
-from utils.beautify import beautify_text
-# from llm import process_request
+# --- Logging services ---
+from services.logger import log_raw_req
 
 app = FastAPI()
 security = HTTPBearer()
@@ -23,69 +25,98 @@ security = HTTPBearer()
 # Load environment variables
 load_dotenv()
 SECRET_TOKEN = os.getenv("BEARER_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+
+# -----------------------------
+# Singleton pattern for AsyncOpenAI client
+# -----------------------------
+
+
+
+
+# -----------------------------
+# Request models
+# -----------------------------
 class RunRequest(BaseModel):
     url: str
     questions: list[str]
 
-# ✅ Middleware for logging raw requests
+
+# -----------------------------
+# Middleware for logging raw requests
+# -----------------------------
 @app.middleware("http")
 async def log_raw_request_middleware(request: Request, call_next):
     try:
         body = await request.body()
         log_raw_req(body.decode("utf-8"))
     except Exception as e:
-        print(e)
         print(f"[WARN] Could not log raw request: {e}")
     response = await call_next(request)
     return response
 
-# ✅ Bearer token verification
+
+# -----------------------------
+# Placeholder token verification
+# -----------------------------
 async def verify_token(token: str = "dummy_token"):
-    """
-    A placeholder dependency to verify a token.
-    In a real app, you would implement your authentication logic here.
-    """
-    # For example: if token != "your-secret-token": raise HTTPException(...)
     return token
 
+
+# -----------------------------
+# /hackrx/prod route
+# -----------------------------
 @app.post("/hackrx/prod")
 async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
-    timestamp = datetime.utcnow().isoformat()
-    url = req.url
-    questions = req.questions
+    # Update keys dynamically
+    write_subscription_key("YOUR_PLACEHOLDER_API_KEY".strip(),"api_key.txt")
+    write_subscription_key("sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18".strip(),"subscription_key.txt")
+    write_subscription_key("https://register.hackrx.in/llm/openai".strip(),"base_url.txt")
 
+    client = get_client()  # fresh client with updated keys
+    print(client.api_key)
+    print(client.base_url)
+    print(client.default_headers)
     try:
         ai_response = await process_prod_request(req.dict())
     except Exception as e:
-        print(e)
         raise HTTPException(status_code=500, detail=f"Agent processing failed: {e}")
 
-    response_data = {
-        "answers": ai_response.get("answers", ["Agent did not provide a valid answer."]),
-    }
-    response_data["answers"] = [beautify_text(a) for a in response_data["answers"]]
-    return response_data
+    answers = [beautify_text(a) for a in ai_response.get("answers", ["Agent did not provide a valid answer."])]
+
+    return {"answers": answers}
 
 
+# -----------------------------
+# /hackrx/dev route
+# -----------------------------
 @app.post("/hackrx/dev")
-async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
-    timestamp = datetime.utcnow().isoformat()
-    url = req.url
-    questions = req.questions
+async def run_dev(req: RunRequest, token: str = Depends(verify_token)):
+    # Write keys
+    write_subscription_key(OPENAI_API_KEY.strip(), "api_key.txt")
+    write_subscription_key("", "subscription_key.txt")
+    write_subscription_key("", "base_url.txt")
+
+    client = get_client()  # always gets fresh client with correct keys
+
+    print("DEBUG CLIENT HEADERS:", client.default_headers)
+    print("DEBUG CLIENT API KEY:", client.api_key)
+    print("DEBUG CLIENT BASE URL:", client.base_url)
 
     try:
         ai_response = await process_dev_request(req.dict())
     except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Agent processing failed: {e}")
+        import traceback
+        traceback.print_exc()  # full stack trace
+        raise HTTPException(status_code=500, detail=str(e))
 
-    response_data = {
-        "answers": ai_response.get("answers", ["Agent did not provide a valid answer."]),
-    }
-    response_data["answers"] = [beautify_text(a) for a in response_data["answers"]]
-    return response_data
+    answers = [beautify_text(a) for a in ai_response.get("answers", ["Agent did not provide a valid answer."])]
+    return {"answers": answers}
 
 
+# -----------------------------
+# Main
+# -----------------------------
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
