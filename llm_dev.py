@@ -1,107 +1,131 @@
+# llm_agent.py
 import os
 import json
 import asyncio
-from openai import AsyncOpenAI # Key Change: Import AsyncOpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
-# --- Import your custom tool functions ---
-from tools.view_website_source import view_website_source
-from tools.visit_url import visit_url
-from tools.click_element import click_element
-from tools.input_text import input_text
+# --- Import the stateful browser class and tool schemas ---
+from tools.browser_tools import BrowserSession, tool_definitions
 
-# Key Change: Functions are now 'async def'
 async def run_single_conversation_async(client, model, messages, tools):
     """
-    Runs a single, self-contained conversation for one independent question.
+    Runs a single, stateful conversation, managing its own browser lifecycle.
     """
-    # --- Step 1: Make the initial API call ---
-    print(f"🤖 Calling model for task: {messages[-1]['content'][:50]}...")
-    # Key Change: Use 'await' for the API call
-    response = await client.chat.completions.create(
-        model=model,
-        messages=messages,
-        tools=tools,
-        tool_choice="auto",
-    )
-    response_message = response.choices[0].message
-    tool_calls = response_message.tool_calls
-    messages.append(response_message)
+    print(f"🤖 Starting new task: {messages[-1]['content'][:70]}...")
+    
+    # Key Change: Create a dedicated browser session for this task
+    browser = BrowserSession()
+    if not browser.driver:
+        return "Error: Failed to initialize browser."
 
-    if not tool_calls:
-        return response_message.content
-
-    # (Tool calling logic remains mostly the same, but the final call is awaited)
-    available_functions = {
-        "view_website_source": view_website_source,
-        "visit_url": visit_url,
-        "click_element": click_element,
-        "input_text": input_text,
+    # Key Change: Map tool names to the METHODS of the browser instance
+    available_tools = {
+        "navigate": browser.navigate,
+        "read_content": browser.read_content,
+        "click_element": browser.click_element,
+        "input_text": browser.input_text,
     }
 
-    for tool_call in tool_calls:
-        function_name = tool_call.function.name
-        function_to_call = available_functions.get(function_name)
-        function_args = json.loads(tool_call.function.arguments)
-        function_response = function_to_call(**function_args)
-        messages.append(
-            {
-                "tool_call_id": tool_call.id,
-                "role": "tool",
-                "name": function_name,
-                "content": str(function_response),
-            }
-        )
+    try:
+        # The conversation loop for this single task
+        while True:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+            )
+            response_message = response.choices[0].message
+            tool_calls = response_message.tool_calls
+            messages.append(response_message)
 
-    # Key Change: 'await' the second call
-    second_response = await client.chat.completions.create(
-        model=model,
-        messages=messages,
-    )
-    return second_response.choices[0].message.content
+            if not tool_calls:
+                print("✅ Model finished the task.")
+                break
 
-# Key Change: process_request is now 'async def'
+            print(f"🛠️ Model wants to use {len(tool_calls)} tool(s)...")
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_to_call = available_tools.get(function_name)
+                
+                if not function_to_call:
+                    print(f"Error: Unknown function '{function_name}'")
+                    continue
+
+                function_args = json.loads(tool_call.function.arguments)
+                print(f"   - Calling: {function_name}({function_args})")
+                
+                # Key Change: 'await' the async tool function
+                function_response = await function_to_call(**function_args)
+                
+                messages.append({
+                    "tool_call_id": tool_call.id, "role": "tool",
+                    "name": function_name, "content": str(function_response),
+                })
+        
+        return messages[-1].content
+    
+    finally:
+        # Key Change: CRITICAL - Ensure the browser is closed after the task is done
+        await browser.close()
+
 async def process_request(user_request: dict) -> dict:
     """
-    Takes a user request and runs all questions in parallel.
+    Takes a user request and runs all tasks in parallel.
     """
-    # --- Setup ---
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
-    # Key Change: Use the AsyncOpenAI client
     client = AsyncOpenAI(api_key=api_key)
-    model = "gpt-4o"
-
-    try:
-        with open("gpt_tools.json", "r") as f:
-            tools = json.load(f)
-    except FileNotFoundError:
-        raise FileNotFoundError("gpt_tools.json not found.")
-
-    # --- Key Change: Create a list of concurrent tasks ---
+    model = "gpt-4.1"
+    
     tasks = []
     for question in user_request['questions']:
-        # Each question gets its own separate conversation history
         individual_messages = [
-            {
-                "role": "system",
-                "content": "You are a web automation assistant. Use the provided tools to interact with the website to answer the user's question. Answer to the point."
-            },
-            {
-                "role": "user",
-                "content": f"Please perform the following task on the website {user_request['url']}. Task: {question}"
-            }
+            {"role": "system", "content": "You are a web automation assistant. Start by navigating to the specified URL and then follow the user's website instructions or instructions on the website to complete the task."},
+            {"role": "user", "content": f"Please perform the following task on the website {user_request['url']}. Task: {question}"}
         ]
-        # Create a coroutine for each question and add it to our task list
-        task = run_single_conversation_async(client, model, individual_messages, tools)
+        
+        # Each task gets the full list of tool definitions
+        task = run_single_conversation_async(client, model, individual_messages, tool_definitions)
         tasks.append(task)
 
-    # --- Key Change: Run all tasks concurrently ---
-    print(f"🚀 Running {len(tasks)} questions in parallel...")
+    print(f"🚀 Running {len(tasks)} tasks in parallel...")
     all_answers = await asyncio.gather(*tasks)
-    print("✅ All questions processed.")
+    print("✅ All tasks processed.")
 
     return {"answers": all_answers}
+
+if __name__ == "__main__":
+    # Create a mock HTML file for a realistic test
+    html_content = """
+    <html><body>
+        <h1>Welcome!</h1>
+        <p>Please enter your name to continue.</p>
+        <input type="text" placeholder="Enter your name">
+        <button onclick="alert('Submitted!')">Submit</button>
+    </body></html>
+    """
+    with open("test_page.html", "w") as f:
+        f.write(html_content)
+    
+    test_url = 'file://' + os.path.realpath("test_page.html")
+
+    # Define a sample request with a multi-step task
+    sample_request = {
+        "url": test_url,
+        "questions": [
+            "Read the main heading, then type 'Agent Smith' into the name field, and finally click the 'Submit' button."
+        ]
+    }
+
+    results = asyncio.run(process_request(sample_request))
+
+    print("\n--- FINAL RESULTS ---")
+    print(json.dumps(results, indent=2))
+    print("---------------------")
+
+    os.remove("test_page.html")

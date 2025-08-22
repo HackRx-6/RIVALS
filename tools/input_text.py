@@ -38,7 +38,7 @@ def input_text(url: str, tag_name: str, class_names: str, placeholder_text: str,
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         wait = WebDriverWait(driver, 10)
-
+        print("input_text called with:", url, tag_name, class_names, placeholder_text, text_to_input)
         # --- Navigation ---
         driver.get(url)
 

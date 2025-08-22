@@ -27,6 +27,8 @@ def click_element(url: str, tag_name: str, class_names: str, text_content: str) 
         A string confirming the element was clicked, or an error message if it
         could not be found or clicked.
     """
+
+    print("click_element called with:", url, tag_name, class_names, text_content)
     driver = None
     try:
         # --- Browser Setup ---

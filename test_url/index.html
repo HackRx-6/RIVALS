@@ -1,35 +1,80 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>Final Challenge</title>
-  <style>
-    /* Fake clue to mislead */
-    #fake::after {
-      content: "SECRET_CODE: WRONG123";
-    }
-  </style>
-  <script>
-    function stepOne() {
-      // Step 1: Click the button
-      document.getElementById("status").innerText = "Step 1 complete. Decoding...";
-      
-      // Step 2: After 2s, reveal a base64 code
-      setTimeout(() => {
-        const encoded = "U0VDUkVUX0NPREU6IFBTSVgxMjM="; 
-        // base64 = "SECRET_CODE: PSIX123"
-        document.getElementById("hidden").innerText = encoded;
-      }, 2000);
-    }
-  </script>
-</head>
-<body>
-  <h2>Final Challenge</h2>
-  <p>You must perform the right action to get the code.</p>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text Challenge</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f8f9fa;
+      }
+      #result {
+        margin-top: 15px;
+        font-weight: bold;
+        text-align: center;
+      }
+      .token {
+        font-family: monospace;
+        background: #e9ecef;
+        padding: 5px 10px;
+        border-radius: 5px;
+        display: inline-block;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card p-4 shadow-sm" style="width: 400px">
+      <h3 class="card-title mb-3 text-center">Enter Text</h3>
+      <form id="textForm">
+        <div class="mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="inputText"
+            placeholder="Type something..."
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Submit</button>
+      </form>
+      <div id="result"></div>
+    </div>
 
-  <button onclick="stepOne()">Start</button>
-  <p id="status"></p>
-  <p id="hidden" style="color:white;">Nothing here yet...</p>
+    <script>
+      const form = document.getElementById('textForm');
+      const resultDiv = document.getElementById('result');
 
-  <iframe src="decoy.html" style="display:none;"></iframe>
-</body>
+      // Simple random token generator
+      function generateToken(length = 16) {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        let token = "";
+        for (let i = 0; i < length; i++) {
+          token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return token;
+      }
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const inputValue = document.getElementById('inputText').value.trim().toUpperCase();
+
+        if (inputValue === "TOMATO") {
+          const token = generateToken();
+          resultDiv.innerHTML = <span class="text-success">CORRECT<br>Token: <span class="token">${token}</span></span>;
+        } else {
+          resultDiv.textContent = inputValue; // just echo the input
+          resultDiv.className = "text-danger";
+        }
+      });
+    </script>
+  </body>
 </html>
