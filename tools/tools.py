@@ -142,6 +142,107 @@ class ToolsFunctionCalling:
         return file_path
 
 
+    async def generate_code_input_from_file(self, question: str, code_file_path: str) -> str:
+        """
+        Generates a standard input string and saves it to a file in the 'inputs' directory.
+
+        This tool reads a Python script, analyzes a question for input values, uses an LLM 
+        to construct the standard input string, and saves it to a file named after the 
+        UUID of the source code file (e.g., 'inputs/input_<uuid>.txt').
+
+        Args:
+            question: The natural language question containing the input values.
+            code_file_path: The local file path to the Python code snippet, which must
+                            contain a UUID in its name (e.g., 'code_<uuid>.py').
+
+        Returns:
+            The full file path of the generated input file, or an error message if any step fails.
+        """
+
+        print(f"Generating code input for question: {question} and code file: {code_file_path}")
+        try:
+            # --- Read the code from the specified file path ---
+            with open(code_file_path, 'r') as f:
+                code = f.read()
+
+        except FileNotFoundError:
+            return f"Error: The code file was not found at the specified path: {code_file_path}"
+        except Exception as e:
+            return f"Error: An unexpected error occurred while reading the code file: {e}"
+
+        try:
+            # --- Construct the Prompt for the LLM ---
+            prompt = f"""
+    You are an expert programmer and your task is to generate the precise standard input string for a given Python script based on a natural language question.
+
+    Analyze the provided question to extract all necessary input values.
+    Then, analyze the provided Python code to understand how it reads from standard input (e.g., input(), input().split(), loops, etc.).
+
+    Your final output must be a single string that can be directly piped into the script to run it successfully. Do not include any explanation, code, or markdown formatting. Only provide the raw input string.
+
+    ---
+    *Question:*
+    {question}
+
+    ---
+    *Code:*
+    ```python
+    {code}
+    ```
+
+    ---
+    *Formatted Input String:*
+    """
+
+            # --- Call the OpenAI API ---
+            response = await client.chat.completions.create(
+                model="gpt-4.1",
+                messages=[
+                    {"role": "system", "content": "You are an expert programmer assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,
+            )
+
+            # --- Extract the formatted string ---
+            formatted_input = response.choices[0].message.content.strip()
+
+            # --- Extract UUID from the input code file path ---
+            try:
+                base_name = os.path.basename(code_file_path)
+                name_without_ext = os.path.splitext(base_name)[0]
+                # Assumes filename format like 'someprefix_uuid'
+                code_uuid = name_without_ext.split('_')[-1]
+                print(f"Extracted UUID: {code_uuid}")
+            except IndexError:
+                return f"Error: Could not extract UUID from filename: {code_file_path}. Expected format like 'prefix_uuid.py'."
+
+            # --- Define the output directory and create it if it doesn't exist ---
+            output_dir = "inputs"
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir, exist_ok=True)
+
+            # --- Generate the unique filename and the full file path ---
+            filename = f"input_{code_uuid}.txt"
+            file_path = os.path.join(output_dir, filename)
+
+            # --- Save the clean input to the file ---
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(formatted_input)
+                print(f"Input successfully saved to: {file_path}")
+            except IOError as e:
+                return f"Error saving input file: {e}"
+
+            # --- Return the path to the newly created file ---
+
+            print(f"Generated input file path: {file_path}")
+            return file_path
+
+        except Exception as e:
+            print(e)
+            return f"Error: An unexpected error occurred while generating or saving the input string: {e}"
+
 
     async def close(self):
         """Asynchronously closes the browser session."""
@@ -222,5 +323,32 @@ tool_definitions = [
             "required": ["query"]
         }
     }
+},
+
+{
+  "type": "function",
+  "function": {
+    "name": "generate_code_input_from_file",
+    "description": "Generates a standard input string based on a question and a code file, saves the input string to a new file, and returns the path to that new file. Use this when you need to create an input file for a script.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "question": {
+          "type": "string",
+          "description": "The natural language question that contains the input values for the code. For example, 'Given the numbers 5 and 10, calculate their sum.'"
+        },
+        "code_file_path": {
+          "type": "string",
+          "description": "The local file path to the Python code snippet that will consume the standard input. For example, './calculate_sum.py'."
+        }
+      },
+      "required": [
+        "question",
+        "code_file_path"
+      ]
+    }
+  }
 }
+
+
 ]

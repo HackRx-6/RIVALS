@@ -26,6 +26,7 @@ async def run_single_conversation_async(client, model, messages, tools):
         "click_element": browser.click_element,
         "input_text": browser.input_text,
         "generate_code": browser.generate_code,
+        "generate_code_input_from_file": browser.generate_code_input_from_file,
     }
 
     try:

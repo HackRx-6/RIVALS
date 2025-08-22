@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 generated_code/
+inputs/
 # Distribution / packaging
 .Python
 build/
