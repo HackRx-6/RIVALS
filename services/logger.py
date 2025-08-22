@@ -1,44 +1,48 @@
-import os
 import json
+import os
+from datetime import datetime
 
-LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-LOG_CONTENT_PATH = os.path.join(LOGS_DIR, "logs_content.json")
-LOG_HTML_PATH = os.path.join(LOGS_DIR, "logs_html.json")
+LOGS_DIR = "logs"
+CONTENT_LOG = os.path.join(LOGS_DIR, "logs_content.json")
+HTML_LOG = os.path.join(LOGS_DIR, "logs_html.json")
+RAW_REQ_LOG = os.path.join(LOGS_DIR, "logs_raw_req.json")
 
-def log_content(request, url, questions, timestamp, response):
-    log_entry = {
-        "request": request,
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+def _append_to_json_file(file_path, entry):
+    data = []
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = []
+    data.append(entry)
+    with open(file_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+def log_content(req_data, url, questions, timestamp, response_data):
+    entry = {
+        "timestamp": timestamp,
         "url": url,
         "questions": questions,
-        "timestamp": timestamp,
-        "response": response,
+        "request": req_data,
+        "response": response_data,
     }
-    print(f"[DEBUG] Logging content to {LOG_CONTENT_PATH}")
-    _append_to_file(LOG_CONTENT_PATH, log_entry)
+    _append_to_json_file(CONTENT_LOG, entry)
 
-def log_html(request, url, html_content):
-    log_entry = {
-        "request": request,
+def log_html(req_data, url, html_content):
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(),
         "url": url,
-        "html": html_content,
+        "request": req_data,
+        "html_content": html_content[:1000],  # truncate for readability
     }
-    print(f"[DEBUG] Logging HTML to {LOG_HTML_PATH}")
-    _append_to_file(LOG_HTML_PATH, log_entry)
+    _append_to_json_file(HTML_LOG, entry)
 
-def _append_to_file(file_path, log_entry):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "r+", encoding="utf-8") as f:
-                try:
-                    data = json.load(f)
-                except json.JSONDecodeError:
-                    data = []
-                data.append(log_entry)
-                f.seek(0)
-                json.dump(data, f, indent=4)
-        else:
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump([log_entry], f, indent=4)
-        print(f"[DEBUG] Log successfully written to {file_path}")
-    except Exception as e:
-        print(f"[ERROR] Failed to log to {file_path}: {e}")
+def log_raw_req(raw_body: str):
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "raw_body": raw_body,
+    }
+    _append_to_json_file(RAW_REQ_LOG, entry)
