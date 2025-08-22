@@ -17,13 +17,13 @@ import re
 import os
 import uuid
 import re
-# client = AsyncOpenAI()
-client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+client = AsyncOpenAI()
+# client = AsyncOpenAI(
+#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+#         default_headers={
+#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+#     })
 
 
 
@@ -172,6 +172,7 @@ class ToolsFunctionCalling:
                 if not body: return "Error: Could not find the <body> tag."
                 for tag in body.find_all(['script', 'style']):
                     tag.decompose()
+                print(str(body))
                 return str(body)
             return await asyncio.to_thread(_get_source)
         except Exception as e:
