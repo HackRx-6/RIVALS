@@ -1,4 +1,7 @@
-def almost_equal_index(s: str, pattern: str) -> int:
+s = input()
+pattern = input()
+
+def almost_equal_substring_index(s, pattern):
     n, m = len(s), len(pattern)
     for i in range(n - m + 1):
         diff = 0
@@ -11,7 +14,4 @@ def almost_equal_index(s: str, pattern: str) -> int:
             return i
     return -1
 
-# Example usage:
-s = input()
-pattern = input()
-print(almost_equal_index(s, pattern))
+print(almost_equal_substring_index(s, pattern))
