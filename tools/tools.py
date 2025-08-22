@@ -17,13 +17,13 @@ import re
 import os
 import uuid
 import re
-client = AsyncOpenAI()
-# client = AsyncOpenAI(
-#         api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-#         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-#         default_headers={
-#             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-#     })
+# client = AsyncOpenAI()
+client = AsyncOpenAI(
+        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+        default_headers={
+            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
+    })
 
 
 
@@ -219,7 +219,7 @@ class ToolsFunctionCalling:
     # self.output_dir = "generated_code" 
     # os.makedirs(self.output_dir, exist_ok=True)
 
-    async def generate_code(self, query: str):
+    async def generate_code(self, query: str, code_dir: str = "gen_code") -> str:
         """
         Generates executable code, saves it to a .py file, 
         and returns the file path.
@@ -227,7 +227,7 @@ class ToolsFunctionCalling:
         print(f"Generating code for query: {query}")
         
         # Define and ensure the output directory exists
-        output_dir = "generated_code_test"
+        output_dir = code_dir
         os.makedirs(output_dir, exist_ok=True)
 
         response = await client.chat.completions.create(
@@ -272,10 +272,10 @@ class ToolsFunctionCalling:
         repo_path=".",  # current repository
 
 
-        commit_message="Auto-update output.txt for ROUND_6",
+        commit_message="Auto-Push",
 
 
-        should_commit=True  # only commit if this condition is True
+        should_commit=True 
 
 
         )
@@ -522,24 +522,21 @@ tool_definitions = [
 {
   "type": "function",
   "function": {
-    "name": "generate_code_input_from_file",
-    "description": "Generates a standard input string based on a question and a code file, saves the input string to a new file, and returns the path to that new file. Use this when ever you need to create an input file for a script.",
+    "name": "generate_code",
+    "description": "Generates executable Python code based on a user's query, saves it to a .py file, and returns the absolute file path.",
     "parameters": {
       "type": "object",
       "properties": {
-        "question": {
+        "query": {
           "type": "string",
-          "description": "The natural language question that contains the input values for the code. For example, 'Given the numbers 5 and 10, calculate their sum.'"
+          "description": "The user's natural language request describing the code to be generated. For example, 'create a python script that calculates the factorial of a number'."
         },
-        "code_file_path": {
+        "code_dir": {
           "type": "string",
-          "description": "The local file path to the Python code snippet that will consume the standard input. For example, './calculate_sum.py'."
+          "description": "The optional directory name where the generated Python file should be saved. If not provided, it defaults to 'gen_code'."
         }
       },
-      "required": [
-        "question",
-        "code_file_path"
-      ]
+      "required": ["query"]
     }
   }
 }
