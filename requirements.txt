@@ -1,3 +1,7 @@
 fastapi
 uvicorn
 httpx
+dotenv
+selenium
+openai
+requests
