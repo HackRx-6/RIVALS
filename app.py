@@ -53,7 +53,7 @@ async def run_prod(req: RunRequest, token: str = Depends(verify_token)):
     questions = req.questions
 
     try:
-        ai_response = process_prod_request(req.dict())
+        ai_response = await process_prod_request(req.dict())
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=f"Agent processing failed: {e}")
