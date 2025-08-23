@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 # ToolsFunctionCalling
 from openai import AsyncOpenAI
 
-
+from dotenv import load_dotenv
 import subprocess
 import sys
 from pathlib import Path
@@ -18,12 +18,13 @@ import os
 import uuid
 import re
 # client = AsyncOpenAI()
-client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
-        default_headers={
-            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-    })
+
+
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OPENAI_API_KEY not found in .env file")
+client = AsyncOpenAI(api_key=api_key)
 
 
 

@@ -16,8 +16,7 @@ async def run_single_conversation_async(client, model, messages, tools):
     
     # Key Change: Create a dedicated browser session for this task
     browser = ToolsFunctionCalling()
-    if not browser.driver:
-        return "Error: Failed to initialize browser."
+    
 
     # Key Change: Map tool names to the METHODS of the browser instance
     available_tools = {
@@ -25,10 +24,12 @@ async def run_single_conversation_async(client, model, messages, tools):
         "read_content": browser.read_content,
         "click_element": browser.click_element,
         "input_text": browser.input_text,
+        "execute_javascript": browser.execute_javascript,
         "generate_code": browser.generate_code,
         "generate_code_input_from_file": browser.generate_code_input_from_file,
         "run_python_with_input": browser.run_python_with_input,
-        "execute_javascript": browser.execute_javascript,
+        "get_element_details": browser.get_element_details,
+        "get_event_sequence": browser.get_event_sequence,
     }
 
     try:
