@@ -114,7 +114,8 @@ CORE PRINCIPLES:
 1. Always start by navigating to the specified URL
 2. For immediate pattern sequences, use click_and_monitor when clicking a button for the first time with text in it.
 3. For delayed or existing patterns, use regular monitor_html_changes
-
+4. Make sure we have achieved core task objectives before ending the task.
+             
 PATTERN DETECTION STRATEGY:
 - For buttons that start patterns ("Start Pattern", "Begin", "Play", etc.): Use click_and_monitor
 - For ongoing patterns: Use monitor_html_changes with start_immediately=true
