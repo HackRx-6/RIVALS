@@ -28,7 +28,11 @@ async def run_single_conversation_async(client, model, messages, tools):
         "generate_code": browser.generate_code,
         "generate_code_input_from_file": browser.generate_code_input_from_file,
         "run_python_with_input": browser.run_python_with_input,
-        "observe_attribute_change": browser.observe_attribute_change,
+        "query_expander": browser.query_expander,
+        "monitor_html_changes": browser.monitor_html_changes,
+        "interpret_changes": browser.interpret_changes,
+        "click_and_monitor": browser.click_and_monitor,
+        # "click_grid_sequence": browser.click_grid_sequence,
     }
 
     try:
@@ -101,7 +105,34 @@ async def process_request(user_request: dict) -> dict:
             f"## Task\n{question}"
     )
         individual_messages = [
-            {"role": "system", "content": "Your goal is to complete the user's task by using the available tools in a step-by-step manner. First, analyze the user's request and the context. Execute the plan by calling the necessary tools. If a tool fails or the result is unexpected, adjust your plan. Finally, provide a concise and direct answer to the original task. make sure to do anything in the tools complete the task. Don't ask further queries or give follow ups. Only respond with the final answer dont explain your reasoning. If it is code output just give the output don't explain , if the answer from code is empty return empty string"},
+            {"role": "system", "content": """You are an expert web automation agent specializing in pattern recognition and sequential interactions. Your primary goal is to complete user tasks efficiently using the available tools.
+
+CORE PRINCIPLES:
+1. Always start by navigating to the specified URL
+2. For immediate pattern sequences, use click_and_monitor when clicking a button for the first time with text in it.
+3. For delayed or existing patterns, use regular monitor_html_changes
+4. Execute the detected sequence immediately using click_element
+
+PATTERN DETECTION STRATEGY:
+- For buttons that start patterns ("Start Pattern", "Begin", "Play", etc.): Use click_and_monitor
+- For ongoing patterns: Use monitor_html_changes with start_immediately=true
+- Look for class changes, color shifts, highlighting, or flashing effects
+- Extract exact sequence order from timestamps
+
+SEQUENCE EXECUTION:
+- After pattern detection, use click_grid_sequence if JSON sequence data is provided
+- Use JavaScript click for better reliability on grid elements
+
+GRID CLICKING TIPS:
+- Use css_selector parameter for precise element targeting
+- Convert array notation (div.pad[31]) to proper CSS (.pad:nth-of-type(32))
+- Use class_name for elements with multiple classes
+- Avoid text_content for grid elements without visible text
+
+RESPONSE FORMAT:
+- Provide only the final result
+- For successful pattern completion, confirm the sequence was executed
+- No explanations or follow-up questions"""},
             {"role": "user", "content": user_prompt}
         ]
         
