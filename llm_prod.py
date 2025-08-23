@@ -32,6 +32,7 @@ async def run_single_conversation_async(client, model, messages, tools):
         "monitor_html_changes": browser.monitor_html_changes,
         "interpret_changes": browser.interpret_changes,
         "click_and_monitor": browser.click_and_monitor,
+        # "click_grid_sequence": browser.click_grid_sequence,
     }
 
     try:
@@ -93,7 +94,7 @@ async def process_request(user_request: dict) -> dict:
         base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
         default_headers={
             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
-})
+        })
     model = "gpt-4.1"
     
     context_data = {k: v for k, v in user_request.items() if k !='questions'}
@@ -111,9 +112,8 @@ async def process_request(user_request: dict) -> dict:
 
 CORE PRINCIPLES:
 1. Always start by navigating to the specified URL
-2. For immediate pattern sequences (like memory games), use click_and_monitor when clicking "Start", "Begin", or "Play" buttons
+2. For immediate pattern sequences, use click_and_monitor when clicking a button for the first time with text in it.
 3. For delayed or existing patterns, use regular monitor_html_changes
-4. Execute the detected sequence immediately using click_element
 
 PATTERN DETECTION STRATEGY:
 - For buttons that start patterns ("Start Pattern", "Begin", "Play", etc.): Use click_and_monitor
@@ -122,13 +122,13 @@ PATTERN DETECTION STRATEGY:
 - Extract exact sequence order from timestamps
 
 SEQUENCE EXECUTION:
-- use click_element with proper CSS selectors (css_selector parameter)
+- After pattern detection, use click_grid_sequence if JSON sequence data is provided
 - Use JavaScript click for better reliability on grid elements
 
 GRID CLICKING TIPS:
 - Use css_selector parameter for precise element targeting
 - Convert array notation (div.pad[31]) to proper CSS (.pad:nth-of-type(32))
-- Use class_name for elements with multiple classes (e.g., "pad yellow")
+- Use class_name for elements with multiple classes
 - Avoid text_content for grid elements without visible text
 
 RESPONSE FORMAT:
