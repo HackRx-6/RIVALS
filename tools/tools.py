@@ -11,6 +11,8 @@ from typing import List, Optional
 from openai import AsyncOpenAI
 import time
 
+import json
+
 import subprocess
 import sys
 from pathlib import Path
@@ -189,81 +191,209 @@ class ToolsFunctionCalling:
             return f"Successfully navigated to {url}."
         except Exception as e:
             return f"Error navigating: {e}"
+        
 
-    async def read_content(self) -> str:
+    async def get_interactive_elements(self) -> str:
+        """
+        Extracts and lists all interactive elements like links, buttons, and input
+        fields from the current page, showing their text and URLs/placeholders.
+        """
         try:
             await self._ensure_browser_started()
-            def _get_source():
-                time.sleep(0.5)
+
+            def _get_elements_sync():
+                soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+                elements = []
+                
+                # Find all links
+                for link in soup.find_all('a', href=True):
+                    text = link.get_text(strip=True)
+                    if text:
+                        elements.append({
+                            "type": "link",
+                            "text": text,
+                            "href": link['href']
+                        })
+                
+                # Find all buttons
+                for button in soup.find_all('button'):
+                    text = button.get_text(strip=True)
+                    if text:
+                        elements.append({
+                            "type": "button",
+                            "text": text
+                        })
+
+                # Find all text inputs
+                for input_tag in soup.find_all('input'):
+                    if input_tag.get('type') in ['text', 'email', 'password', 'search', 'tel', 'url', None]:
+                        elements.append({
+                            "type": "input",
+                            "placeholder": input_tag.get('placeholder', 'N/A'),
+                            "name": input_tag.get('name', 'N/A')
+                        })
+
+                if not elements:
+                    return "No interactive elements (links, buttons, inputs) found on the page."
+                
+                # Return as a formatted JSON string for clarity
+                return json.dumps(elements, indent=2)
+
+            return await asyncio.to_thread(_get_elements_sync)
+        except Exception as e:
+            return f"Error extracting interactive elements: {e}"
+
+    async def read_content(self) -> str:
+        """
+        Extracts relevant visible text, URLs, and button-related info from the page.
+        Returns a JSON string with 'text', 'urls', and 'buttons'.
+        """
+        try:
+            await self._ensure_browser_started()
+
+            def _extract_content():
+                time.sleep(0.2)
                 soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                 body = soup.find('body')
-                if not body: return "Error: Could not find the <body> tag."
-                for tag in body.find_all(['script', 'style']):
+                if not body:
+                    return {"error": "Could not find <body> tag."}
+
+                # Remove scripts, styles, and hidden elements
+                for tag in body.find_all(['script', 'style', 'noscript']):
                     tag.decompose()
-                return str(body)
-            return await asyncio.to_thread(_get_source)
+                for hidden in body.select('[style*="display:none"], [hidden]'):
+                    hidden.decompose()
+
+                # Get visible text
+                text = body.get_text(separator="\n", strip=True)
+
+                # Collect URLs (anchors + images + iframes)
+                urls = []
+                for tag in body.find_all(["a", "img", "iframe"]):
+                    href = tag.get("href") or tag.get("src")
+                    if href:
+                        urls.append(href)
+
+                # Collect button-related elements
+                buttons = []
+                for btn in body.find_all(["button", "a", "input"]):
+                    btn_type = btn.name
+                    btn_text = btn.get_text(strip=True) if btn.name != "input" else btn.get("value", "")
+                    btn_action = btn.get("onclick") or btn.get("href") or btn.get("formaction") or btn.get("src")
+                    if btn_type == "input" and btn.get("type") not in ["button", "submit"]:
+                        continue  # ignore non-button inputs
+                    buttons.append({
+                        "tag": btn_type,
+                        "text": btn_text,
+                        "action": btn_action
+                    })
+
+                return {
+                    "text": text[:5000],   # limit to avoid giant payloads
+                    "urls": list(set(urls)),
+                    "buttons": buttons
+                }
+
+            result = await asyncio.to_thread(_extract_content)
+            return json.dumps(result, ensure_ascii=False, indent=2)
+
         except Exception as e:
-            return f"Error reading content: {e}"
+            return json.dumps({"error": f"Error reading content: {e}"})
 
    
     from selenium.webdriver.common.by import By
     from selenium.common.exceptions import NoSuchElementException
 
     async def click_element(
-        self, 
-        tag_name: str = None, 
-        text_content: str = None, 
-        element_id: str = None, 
-        class_name: str = None, 
-        css_selector: str = None
+    self, 
+    tag_name: str = None, 
+    text_content: str = None, 
+    element_id: str = None, 
+    class_name: str = None, 
+    css_selector: str = None
     ) -> str:
         try:
             await self._ensure_browser_started()
 
             def _click():
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                from selenium.webdriver.common.action_chains import ActionChains
+                from selenium.common.exceptions import ElementClickInterceptedException, StaleElementReferenceException
+                
+                wait = WebDriverWait(self.driver, 10)
                 element = None
 
                 # Try CSS selector first
                 if css_selector:
                     try:
-                        element = self.driver.find_element(By.CSS_SELECTOR, css_selector)
-                        element.click()
-                        return f"✅ Successfully clicked element with CSS selector '{css_selector}'."
-                    except NoSuchElementException:
+                        element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector)))
+                    except:
                         pass
 
                 # Try ID
-                if element_id:
+                if not element and element_id:
                     try:
-                        element = self.driver.find_element(By.ID, element_id)
-                        element.click()
-                        return f"✅ Successfully clicked element with ID '{element_id}'."
-                    except NoSuchElementException:
+                        element = wait.until(EC.element_to_be_clickable((By.ID, element_id)))
+                    except:
                         pass
 
                 # Try class name
-                if class_name:
+                if not element and class_name:
                     try:
-                        element = self.driver.find_element(By.CLASS_NAME, class_name)
-                        element.click()
-                        return f"✅ Successfully clicked element with class '{class_name}'."
-                    except NoSuchElementException:
+                        element = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, class_name)))
+                    except:
                         pass
 
-                # Try text content with tag name
-                if tag_name and text_content:
-                    try:
-                        xpath = f"//{tag_name}[contains(text(), '{text_content}')]"
-                        element = self.driver.find_element(By.XPATH, xpath)
+                # Try text content with tag name - enhanced with multiple XPath approaches
+                if not element and tag_name and text_content:
+                    xpaths_to_try = [
+                        f"//{tag_name}[contains(text(), '{text_content}')]",
+                        f"//{tag_name}[normalize-space(text())='{text_content}']",
+                        f"//{tag_name}[contains(@title, '{text_content}')]",
+                        f"//{tag_name}[contains(@aria-label, '{text_content}')]"
+                    ]
+                    
+                    for xpath in xpaths_to_try:
+                        try:
+                            element = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+                            break
+                        except:
+                            continue
+
+                if not element:
+                    return "❌ Element not found with the provided selectors."
+
+                # Multiple click strategies
+                click_methods = [
+                    # Standard click
+                    lambda: element.click(),
+                    # JavaScript click (bypasses overlays)
+                    lambda: self.driver.execute_script("arguments[0].click();", element),
+                    # ActionChains click
+                    lambda: ActionChains(self.driver).move_to_element(element).click().perform(),
+                    # Scroll into view then click
+                    lambda: (
+                        self.driver.execute_script("arguments[0].scrollIntoView(true);", element),
+                        __import__('time').sleep(0.5),
                         element.click()
-                        return f"✅ Successfully clicked '{tag_name}' with text '{text_content}'."
-                    except NoSuchElementException:
-                        pass
+                    )[-1]
+                ]
 
-                # Element not found
-                return "❌ Element not found with the provided selectors."
+                for i, click_method in enumerate(click_methods):
+                    try:
+                        click_method()
+                        method_names = ["standard click", "JavaScript click", "ActionChains", "scroll + click"]
+                        return f"✅ Successfully clicked element ({method_names[i]})."
+                    except (ElementClickInterceptedException, StaleElementReferenceException) as e:
+                        if i == len(click_methods) - 1:  # Last method
+                            return f"❌ All click methods failed. Last error: {str(e)}"
+                        continue
+                    except Exception as e:
+                        if i == len(click_methods) - 1:  # Last method
+                            return f"❌ All click methods failed. Last error: {str(e)}"
+                        continue
 
-            # Execute the click function in a thread-safe manner
             return await asyncio.to_thread(_click)
 
         except Exception as e:
@@ -948,29 +1078,52 @@ tool_definitions = [
             },
         }
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "read_content",
-            "description": "Reads the full HTML body of the currently loaded webpage.",
-            "parameters": {"type": "object", "properties": {}},
+   {
+    "type": "function",
+    "function": {
+      "name": "read_content",
+      "description": "Extracts relevant visible text, URLs, and button-related info from the current webpage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": False
+      }
+    }
+  },
+   {
+  "type": "function",
+  "function": {
+    "name": "click_element",
+    "description": "Clicks a clickable element (like a button, link, or any interactive element) on the current webpage. Uses multiple fallback strategies including JavaScript click and ActionChains to handle complex scenarios like overlays or elements outside viewport. Supports identification by tag name with text content, element ID, class name, or CSS selector.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tag_name": {
+          "type": "string",
+          "description": "The HTML tag of the element to click (e.g., 'button', 'a', 'div', 'span', 'input'). Used in combination with text_content for text-based element identification."
+        },
+        "text_content": {
+          "type": "string",
+          "description": "The visible text content within the element. Can be exact text or partial text that the element contains. Works with tag_name to locate elements by their displayed text."
+        },
+        "element_id": {
+          "type": "string",
+          "description": "The unique ID attribute of the element to click (e.g., 'submit-button', 'login-btn'). This is the most reliable method when available."
+        },
+        "class_name": {
+          "type": "string",
+          "description": "The CSS class name of the element to click (e.g., 'btn-primary', 'nav-link'). Use only a single class name, not multiple classes."
+        },
+        "css_selector": {
+          "type": "string",
+          "description": "A CSS selector to identify the element (e.g., '.btn.primary', '#header > .nav-item:first-child', 'button[type=\"submit\"]'). This allows for complex element selection."
         }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "click_element",
-            "description": "Clicks a clickable element (like a button or link) on the current page, identified by its text.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "tag_name": {"type": "string", "description": "The HTML tag of the element (e.g., 'button', 'a', 'div')."},
-                    "text_content": {"type": "string", "description": "The exact or partial visible text within the element."},
-                },
-                "required": ["tag_name", "text_content"],
-            },
-        }
-    },
+      },
+      "required": [],
+      "additionalProperties": False
+    }
+  }
+},
     {
         "type": "function",
         "function": {
@@ -1146,5 +1299,18 @@ tool_definitions = [
             "required": ["tag_name", "text_content"]
         }
     }
+    },
+
+    {
+  "type": "function",
+  "function": {
+    "name": "get_interactive_elements",
+    "description": "Extracts and lists all interactive elements like links, buttons, and input fields from the current page, showing their text and URLs/placeholders.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": []
     }
+  }
+}
 ]

@@ -7,19 +7,12 @@ from dotenv import load_dotenv
 
 # --- Import the stateful browser class and tool schemas ---
 from tools.tools import ToolsFunctionCalling, tool_definitions
-
 async def run_single_conversation_async(client, model, messages, tools):
     """
-    Runs a single, stateful conversation, managing its own browser lifecycle.
+    Manages per-task conversation with function calling loop.
     """
-    print(f"🤖 Starting new task: {messages[-1]['content'][:70]}...")
-    
-    # Key Change: Create a dedicated browser session for this task
+    print("🤖 Starting task:", messages[-1]["content"][:70])
     browser = ToolsFunctionCalling()
-    # if not browser.driver:
-    #     return "Error: Failed to initialize browser."
-
-    # Key Change: Map tool names to the METHODS of the browser instance
     available_tools = {
         "navigate": browser.navigate,
         "read_content": browser.read_content,
@@ -32,53 +25,50 @@ async def run_single_conversation_async(client, model, messages, tools):
         "monitor_html_changes": browser.monitor_html_changes,
         "interpret_changes": browser.interpret_changes,
         "click_and_monitor": browser.click_and_monitor,
-        # "click_grid_sequence": browser.click_grid_sequence,
     }
 
     try:
-        # The conversation loop for this single task
         while True:
-            response = await client.chat.completions.create(
+            resp = await client.chat.completions.create(
                 model=model,
                 messages=messages,
                 tools=tools,
                 tool_choice="auto",
             )
-            response_message = response.choices[0].message
-            tool_calls = response_message.tool_calls
-            messages.append(response_message)
+            assistant_msg = resp.choices[0].message
+            messages.append(assistant_msg)
 
-            if not tool_calls:
-                print("✅ Model finished the task.")
+            if not assistant_msg.tool_calls:
+                print("✅ No tool_calls — finished.")
                 break
 
-            print(f"🛠️ Model wants to use {len(tool_calls)} tool(s)...")
-            for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                function_to_call = available_tools.get(function_name)
-                
-                if not function_to_call:
-                    print(f"Error: Unknown function '{function_name}'")
-                    continue
+            for tool_call in assistant_msg.tool_calls:
+                fname = tool_call.function.name
+                args = {}
+                try:
+                    args = json.loads(tool_call.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    pass
 
-                function_args = json.loads(tool_call.function.arguments)
-                print(f"   - Calling: {function_name}({function_args})")
-                
-                # Key Change: 'await' the async tool function
-                function_response = await function_to_call(**function_args)
-                
+                print(f"Calling tool {fname} with", args)
+                if fname in available_tools:
+                    result = await available_tools[fname](**args)
+                else:
+                    result = {"error": f"Tool {fname} not found"}
+
+                # Add the tool response
                 messages.append({
-                    "tool_call_id": tool_call.id, "role": "tool",
-                    "name": function_name, "content": str(function_response),
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(result, ensure_ascii=False)
                 })
-        
-        return messages[-1].content
-    
+
     finally:
-        # Key Change: CRITICAL - Ensure the browser is closed after the task is done
-        if browser:
-            await browser.close()
-        pass
+        await browser.close()
+
+    return messages[-1].content
+
+
 
 async def process_request(user_request: dict) -> dict:
     """
@@ -90,14 +80,14 @@ async def process_request(user_request: dict) -> dict:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
     client = AsyncOpenAI(
-        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
-        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+        api_key="YOUR_API_KEY_PLACEHOLDER",
+        base_url="https://register.hackrx.in/llm/openai",
         default_headers={
             "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"
         })
-    model = "gpt-4.1"
+    model = "gpt-5-mini"
     
-    context_data = {k: v for k, v in user_request.items() if k !='questions'}
+    context_data = {k: v for k, v in user_request.items() if k != 'questions'}
     context_str = "\n".join([f"- : {value}" for key, value in context_data.items()])
     
     tasks = []
@@ -106,15 +96,16 @@ async def process_request(user_request: dict) -> dict:
             "Please perform the following task based on the provided context.\n\n"
             f"## Context\n{context_str}\n\n"
             f"## Task\n{question}"
-    )
+        )
         individual_messages = [
             {"role": "system", "content": """You are an expert web automation agent specializing in pattern recognition and sequential interactions. Your primary goal is to complete user tasks efficiently using the available tools.
-
+    ALWAYS TRY TO BE PREIF AN WRITE CODE AND INPUTS FAST
 CORE PRINCIPLES:
 1. Always start by navigating to the specified URL
 2. For immediate pattern sequences, use click_and_monitor when clicking a button for the first time with text in it.
 3. For delayed or existing patterns, use regular monitor_html_changes
 4. Make sure we have achieved core task objectives before ending the task.
+5. For GitHub tasks type the name of the file you think the code will be in and keep trying until you find it.
              
 PATTERN DETECTION STRATEGY:
 - For buttons that start patterns ("Start Pattern", "Begin", "Play", etc.): Use click_and_monitor
@@ -135,11 +126,11 @@ GRID CLICKING TIPS:
 RESPONSE FORMAT:
 - Provide only the final result
 - For successful pattern completion, confirm the sequence was executed
-- No explanations or follow-up questions"""},
+- No explanations or follow-up questions
+             """},
             {"role": "user", "content": user_prompt}
         ]
         
-        # Each task gets the full list of tool definitions
         task = run_single_conversation_async(client, model, individual_messages, tool_definitions)
         tasks.append(task)
 
@@ -150,7 +141,6 @@ RESPONSE FORMAT:
     return {"answers": all_answers}
 
 if __name__ == "__main__":
-    # Create a mock HTML file for a realistic test
     html_content = """
     <html><body>
         <h1>Welcome!</h1>
@@ -164,7 +154,6 @@ if __name__ == "__main__":
     
     test_url = 'file://' + os.path.realpath("test_page.html")
 
-    # Define a sample request with a multi-step task
     sample_request = {
         "url": test_url,
         "questions": [

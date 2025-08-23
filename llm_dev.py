@@ -32,6 +32,8 @@ async def run_single_conversation_async(client, model, messages, tools):
         "monitor_html_changes": browser.monitor_html_changes,
         "interpret_changes": browser.interpret_changes,
         "click_and_monitor": browser.click_and_monitor,
+
+        "get_interactive_elements": browser.get_interactive_elements,
         # "click_grid_sequence": browser.click_grid_sequence,
     }
 
@@ -90,8 +92,10 @@ async def process_request(user_request: dict) -> dict:
         raise ValueError("OPENAI_API_KEY not found in .env file")
 
     client = AsyncOpenAI(
-       )
-    client = AsyncOpenAI()
+        api_key="YOUR_API_KEY_PLACEHOLDER", # Can be anything, as the proxy uses the header key.
+        base_url="https://register.hackrx.in/llm/openai", # This points all requests to the proxy URL.
+        default_headers={
+            "x-subscription-key": "sk-spgw-api01-f687cb7fbb4886346b2f59c0d39c8c18"})
     model = "gpt-4.1"
     
     context_data = {k: v for k, v in user_request.items() if k !='questions'}
@@ -112,8 +116,10 @@ CORE PRINCIPLES:
 2. For immediate pattern sequences, use click_and_monitor when clicking a button for the first time with text in it.
 3. For delayed or existing patterns, use regular monitor_html_changes
 4. Execute the detected sequence immediately using click_element
+5. Use get_interactive_elements to explore the page and identify actionable items do not call read content unless absolutely necessary.
 
 PATTERN DETECTION STRATEGY:
+- Look within android folder
 - For buttons that start patterns ("Start Pattern", "Begin", "Play", etc.): Use click_and_monitor
 - For ongoing patterns: Use monitor_html_changes with start_immediately=true
 - Look for class changes, color shifts, highlighting, or flashing effects
